@@ -1,0 +1,20 @@
+# LaTeX auxiliary files
+*.aux
+*.log
+*.toc
+*.out
+*.lof
+*.lot
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.blg
+*.bbl
+
+# PDF output (optional, if you want to track PDFs remove this)
+*.pdf
+
+# Backup files
+*~
+*.bak
+*.swp
