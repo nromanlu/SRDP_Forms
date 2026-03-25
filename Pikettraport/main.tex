@@ -1,0 +1,30 @@
+\documentclass{article}
+\usepackage{hyperref}
+\usepackage{fontspec}
+
+%style settup
+\setmainfont{Arial}   % or Arial, Inter, Helvetica etc.
+
+
+% read txt into literal list
+\input{helper/loadlists.tex}
+
+%\typeout{CrewList=\CrewList}
+
+\begin{document}
+	
+	\section*{Pikettraport}
+	
+	\begin{Form}
+		
+		Wähle einen Seeretter:
+		
+		\CrewListDropDown
+		
+		\vspace{1cm}
+		
+		\Submit{Submit}
+		
+	\end{Form}
+	
+\end{document}
