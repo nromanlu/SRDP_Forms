@@ -1,0 +1,9 @@
+- name: Debug secret presence
+        run: |
+          if [ -z "${{ secrets.FTP_SERVER }}" ]; then
+            echo "FTP_SERVER is EMPTY or not found"
+          else
+            echo "FTP_SERVER length: ${#FTP_SERVER}"
+          fi
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
