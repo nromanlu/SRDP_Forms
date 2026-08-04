@@ -183,14 +183,12 @@
     /* ---------------------------------------------------- FOOTER ---------------------------------------------------- */
     .footer {
       display: flex;
-      flex-wrap: wrap;
       align-items: center;
       gap: 12px;
       margin-top: 14px;
       padding-top: 10px;
       border-top: 1px solid #ccc;
     }
-    .footer-actions { display: flex; gap: 12px; flex: 0 0 calc(50% - 6px); }
     .btn {
       padding: 6px 16px;
       font-family: inherit;
@@ -208,7 +206,7 @@
     .btn-submit { background: #2a7a2a; color: #fff; }
     .btn-submit:hover { opacity: .88; }
     .btn:disabled { opacity: .6; cursor: default; }
-    .sig-row { display: flex; align-items: center; gap: 8px; flex: 1 1 calc(50% - 6px); min-width: 260px; }
+    .sig-row { display: flex; align-items: center; gap: 8px; flex: 1; }
     .sig-row label { white-space: nowrap; font-size: 10.5px; color: #444; }
     .sig-row input { flex: 1; }
 
@@ -444,7 +442,7 @@
   <div class="section-title">Elektronik</div>
   <div class="grid">
     <div class="field-row">
-      <div class="field-label">Funkgeräte u.a. mobile Geräte</div>
+      <div class="field-label">Funkgeräte, Telefon & Tablet</div>
       <div class="field-control">
         <div class="radio-group">
           <label><input type="radio" name="funk" value="ok"> Alles i.O.</label>
@@ -473,10 +471,8 @@
 
   <!-- FOOTER -->
   <div class="footer">
-    <div class="footer-actions">
-      <button class="btn btn-reset" onclick="resetForm()">Zurücksetzen</button>
-      <button class="btn btn-submit" id="submitBtn" onclick="submitForm()">Absenden</button>
-    </div>
+    <button class="btn btn-reset" onclick="resetForm()">Zurücksetzen</button>
+    <button class="btn btn-submit" id="submitBtn" onclick="submitForm()">Absenden</button>
     <div class="sig-row">
       <label for="sig_crew">Unterschrift Protokollführer/-in:</label>
       <select id="sig_crew" style="flex:1">
@@ -490,7 +486,6 @@
 </div>
 
 
-<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 
 <script>
@@ -588,48 +583,353 @@
     }
   }
 
-  /* ---------------------------------------------------- PDF GENERATION ---------------------------------------------------- */
-  // Screenshots the white ".page" section (with all filled-in values) and turns it into a
-  // multi-page A4 PDF, preserving the exact look of the form.
-  async function generatePDF() {
-    const element = document.querySelector('.page');
+  /* ---------------------------------------------------- PDF GENERATION (VECTOR) ---------------------------------------------------- */
+  // Builds the PDF by drawing every field directly with jsPDF (text / lines / rects) instead
+  // of screenshotting the page. Result: crisp, selectable, small-file-size vector text.
 
-    // Hide the Reset/Absenden buttons just for the screenshot — they shouldn't appear in the report.
-    const buttonsToHide = document.querySelectorAll('.footer .btn');
-    buttonsToHide.forEach(b => b.classList.add('pdf-hide'));
+  function val(id) {
+    const el = document.getElementById(id);
+    return el ? el.value.trim() : '';
+  }
 
-    let canvas;
-    try {
-      canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff'
-      });
-    } finally {
-      buttonsToHide.forEach(b => b.classList.remove('pdf-hide'));
+  function isChecked(id) {
+    const el = document.getElementById(id);
+    return el ? el.checked : false;
+  }
+
+  function radioValue(name) {
+    const el = document.querySelector(`input[name="${name}"]:checked`);
+    return el ? el.value : null;
+  }
+
+  function crewList(prefix) {
+    return ['a', 'b', 'c', 'd', 'e']
+      .map(letter => val(`${prefix}_${letter}`))
+      .filter(v => v)
+      .join(', ');
+  }
+
+  function okNokText(name, detailId) {
+    const v = radioValue(name);
+    if (v === 'ok') return 'Alles i.O.';
+    if (v === 'nok' || v === 'def') {
+      const d = val(detailId);
+      return d ? `Nicht i.O.: ${d}` : 'Nicht i.O.';
     }
+    return '-';
+  }
 
-    const imgData = canvas.toDataURL('image/png');
+  function engineText(bbId, stbId, nokId, detailId) {
+    const parts = [];
+    if (isChecked(bbId)) parts.push('Bb i.O.');
+    if (isChecked(stbId)) parts.push('Stb i.O.');
+    if (isChecked(nokId)) {
+      const d = val(detailId);
+      parts.push(d ? `Nicht i.O.: ${d}` : 'Nicht i.O.');
+    }
+    return parts.length ? parts.join('  /  ') : '-';
+  }
+
+  async function loadImageAsDataURL(url) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      return await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function getImageSize(dataUrl) {
+    return new Promise((resolve) => {
+      if (!dataUrl) { resolve(null); return; }
+      const img = new Image();
+      img.onload = () => resolve({ width: img.width, height: img.height });
+      img.onerror = () => resolve(null);
+      img.src = dataUrl;
+    });
+  }
+
+  function imageFormat(dataUrl) {
+    const match = /^data:image\/(\w+);base64,/.exec(dataUrl || '');
+    return match ? match[1].toUpperCase() : 'PNG';
+  }
+
+  async function generatePDF() {
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF('p', 'mm', 'a4');
 
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const imgWidth = pageWidth;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    const pageW = 210, pageH = 297;
+    const marginX = 16;
+    const contentW = pageW - marginX * 2;
+    const bottomLimit = pageH - 16;
+    let y = 16;
 
-    let heightLeft = imgHeight;
-    let position = 0;
+    const ink = [26, 26, 26];
+    const gray = [85, 85, 85];
+    const midGray = [102, 102, 102];
+    const lightGray = [204, 204, 204];
+    const faintGray = [235, 235, 235];
+    const mutedGray = [153, 153, 153];
 
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
-
-    while (heightLeft > 0) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+    function ensureSpace(needed) {
+      if (y + needed > bottomLimit) {
+        pdf.addPage();
+        y = 16;
+      }
     }
+
+    function hr(thick) {
+      ensureSpace(6);
+      pdf.setDrawColor(...(thick ? ink : lightGray));
+      pdf.setLineWidth(thick ? 0.6 : 0.3);
+      pdf.line(marginX, y, pageW - marginX, y);
+      y += thick ? 6 : 5;
+    }
+
+    function sectionTitle(text, neededHeight = 0) {
+      ensureSpace(9 + neededHeight);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(9.5);
+      pdf.setTextColor(...ink);
+      pdf.text(text.toUpperCase(), marginX, y);
+      y += 6;
+    }
+
+    function fieldRowHeight(value) {
+      const lines = pdf.splitTextToSize(value, contentW - 50);
+      return lines.length * 4.4 + 4.5;
+    }
+
+    function fieldRow(label, value) {
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(9);
+      const lines = pdf.splitTextToSize(value, contentW - 50);
+      ensureSpace(lines.length * 4.4 + 3);
+      pdf.setTextColor(51, 51, 51);
+      pdf.text(label, marginX, y);
+      pdf.setTextColor(...ink);
+      pdf.text(lines, marginX + 50, y);
+      y += lines.length * 4.4 + 1.5;
+      pdf.setDrawColor(...faintGray);
+      pdf.setLineWidth(0.2);
+      pdf.line(marginX, y, pageW - marginX, y);
+      y += 3;
+    }
+
+    // ---- Header ----
+    const [srdpLogo, gemeindeLogo] = await Promise.all([
+      loadImageAsDataURL('../Logos/SRDP.png'),
+      loadImageAsDataURL('../Logos/GemeindeFreienbach.png')
+    ]);
+    const [srdpDims, gemeindeDims] = await Promise.all([
+      getImageSize(srdpLogo),
+      getImageSize(gemeindeLogo)
+    ]);
+
+    let titleX = marginX;
+    if (srdpLogo && srdpDims) {
+      const box = 18;
+      const ratio = Math.min(box / srdpDims.width, box / srdpDims.height);
+      const w = srdpDims.width * ratio, h = srdpDims.height * ratio;
+      pdf.addImage(srdpLogo, imageFormat(srdpLogo), marginX, y, w, h);
+      titleX = marginX + box + 5;
+    }
+
+    pdf.setFont('times', 'bold');
+    pdf.setFontSize(22);
+    pdf.setTextColor(...ink);
+    pdf.text('Pikettrapport', titleX, y + 8);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(11);
+    pdf.setTextColor(...gray);
+    pdf.text('Seerettungsdienst Pfäffikon SZ', titleX, y + 14);
+
+    if (gemeindeLogo && gemeindeDims) {
+      const boxW = 42, boxH = 14;
+      const ratio = Math.min(boxW / gemeindeDims.width, boxH / gemeindeDims.height);
+      const w = gemeindeDims.width * ratio, h = gemeindeDims.height * ratio;
+      pdf.addImage(gemeindeLogo, imageFormat(gemeindeLogo), pageW - marginX - w, y + 2, w, h);
+    }
+
+    y += 22;
+    hr(true);
+
+    // ---- Tag 1 / Tag 2 ----
+    function dateBlock(label, datumId, vonId, bisId, crewPrefix) {
+      ensureSpace(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(9);
+      pdf.setTextColor(...ink);
+      pdf.text(label, marginX, y);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(val(datumId) || '-', marginX + 30, y);
+
+      pdf.setFontSize(8);
+      pdf.setTextColor(...midGray);
+      pdf.text('Von:', marginX + 68, y);
+      pdf.setFontSize(9);
+      pdf.setTextColor(...ink);
+      pdf.text(val(vonId) || '-', marginX + 76, y);
+
+      pdf.setFontSize(8);
+      pdf.setTextColor(...midGray);
+      pdf.text('Bis:', marginX + 96, y);
+      pdf.setFontSize(9);
+      pdf.setTextColor(...ink);
+      pdf.text(val(bisId) || '-', marginX + 104, y);
+      y += 5;
+
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(9);
+      pdf.setTextColor(68, 68, 68);
+      pdf.text('Mannschaft:', marginX, y);
+      pdf.setTextColor(...ink);
+      const crewLines = pdf.splitTextToSize(crewList(crewPrefix) || '-', contentW - 30);
+      ensureSpace(crewLines.length * 4.2 + 4);
+      pdf.text(crewLines, marginX + 30, y);
+      y += crewLines.length * 4.2 + 4;
+    }
+
+    dateBlock('Datum Tag 1:', 'datum1', 'von1', 'bis1', 'd1_crew');
+    dateBlock('Datum Tag 2:', 'datum2', 'von2', 'bis2', 'd2_crew');
+    hr(true);
+
+    // ---- Boot (Biene III) ----
+    const bootSectionHeight = [
+      fieldRowHeight(okNokText('allg', 'allg-detail')),
+      fieldRowHeight(okNokText('schaeden-a', 'schaeden-a-detail')),
+      fieldRowHeight(okNokText('schaeden-i', 'schaeden-i-detail')),
+      fieldRowHeight(engineText('mot-bb', 'mot-stb', 'mot-nok', 'mot-detail')),
+      fieldRowHeight(engineText('schr-bb', 'schr-stb', 'schr-nok', 'schr-detail')),
+      fieldRowHeight(`${val('mot-h-bb') || '0'} h Bb   /   ${val('mot-h-stb') || '0'} h Stb (eingerückt)`),
+      fieldRowHeight(`${val('treibstoff') || '0'} Liter Diesel gebunkert`)
+    ].reduce((sum, value) => sum + value, 0) + 2 + 6 + 5;
+    sectionTitle('Boot (Biene III)', bootSectionHeight);
+    fieldRow('Allgemeiner Zustand', okNokText('allg', 'allg-detail'));
+    fieldRow('Schäden aussen', okNokText('schaeden-a', 'schaeden-a-detail'));
+    fieldRow('Schäden innen', okNokText('schaeden-i', 'schaeden-i-detail'));
+    fieldRow('Motoren', engineText('mot-bb', 'mot-stb', 'mot-nok', 'mot-detail'));
+    fieldRow('Schrauben', engineText('schr-bb', 'schr-stb', 'schr-nok', 'schr-detail'));
+    fieldRow('Motorenstunden', `${val('mot-h-bb') || '0'} h Bb   /   ${val('mot-h-stb') || '0'} h Stb (eingerückt)`);
+    fieldRow('Treibstoff', `${val('treibstoff') || '0'} Liter Diesel gebunkert`);
+    y += 2;
+    hr(false);
+
+    // ---- Maschinen table ----
+    const colW = [40, (contentW - 40) / 3, (contentW - 40) / 3, (contentW - 40) / 3];
+    const headerLabels = ['', 'Löschpumpe\n(JOHSTADT)', 'Schmutzwasserpumpe\n(Honda)', 'Stromaggregat\n(Honda)'];
+    const rows = [
+      ['Allgemeiner Zustand', isChecked('m1-ok') ? 'i.O.' : '-', isChecked('m2-ok') ? 'i.O.' : '-', isChecked('m3-ok') ? 'i.O.' : '-'],
+      ['Betriebsdauer', `${val('m1-min') || '0'} min`, `${val('m2-min') || '0'} min`, `${val('m3-min') || '0'} min`],
+      ['Treibstoff', `${val('m1-l') || '0'} L`, `${val('m2-l') || '0'} L`, `${val('m3-l') || '0'} L`]
+    ];
+    const headerRowH = 11, dataRowH = 7;
+    const machinesSectionHeight = headerRowH + dataRowH * rows.length + 6 + 5;
+    sectionTitle('Maschinen', machinesSectionHeight);
+    ensureSpace(headerRowH + dataRowH * rows.length + 4);
+
+    let cx = marginX;
+    pdf.setDrawColor(...lightGray);
+    pdf.setLineWidth(0.25);
+    colW.forEach((w, i) => {
+      pdf.setFillColor(240, 240, 236);
+      pdf.rect(cx, y, w, headerRowH, 'FD');
+      if (i === 0) { cx += w; return; }
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(7);
+      pdf.setTextColor(...ink);
+      const lines = headerLabels[i].split('\n');
+      const lineHeight = 3.2;
+      const totalH = lines.length * lineHeight;
+      let ty = y + headerRowH / 2 - totalH / 2 + lineHeight * 0.8;
+      lines.forEach(line => {
+        pdf.text(line, cx + w / 2, ty, { align: 'center' });
+        ty += lineHeight;
+      });
+      cx += w;
+    });
+    y += headerRowH;
+
+    rows.forEach(row => {
+      cx = marginX;
+      pdf.setDrawColor(...lightGray);
+      pdf.setLineWidth(0.25);
+      row.forEach((text, i) => {
+        pdf.rect(cx, y, colW[i], dataRowH, 'D');
+        pdf.setFont('helvetica', i === 0 ? 'bold' : 'normal');
+        pdf.setFontSize(8);
+        pdf.setTextColor(...ink);
+        const align = i === 0 ? 'left' : 'center';
+        const tx = i === 0 ? cx + 2 : cx + colW[i] / 2;
+        pdf.text(text, tx, y + dataRowH / 2, { align, baseline: 'middle' });
+        cx += colW[i];
+      });
+      y += dataRowH;
+    });
+    y += 6;
+    hr(false);
+
+    // ---- Material ----
+    const materialSectionHeight = fieldRowHeight(val('mat-ersetzen') || '-') + fieldRowHeight(val('mat-reparieren') || '-') + 2 + 6 + 5;
+    sectionTitle('Material', materialSectionHeight);
+    fieldRow('Ersetzen:', val('mat-ersetzen') || '-');
+    fieldRow('Reparieren:', val('mat-reparieren') || '-');
+    y += 2;
+    hr(false);
+
+    // ---- Elektronik ----
+    const electronicsSectionHeight = fieldRowHeight(okNokText('funk', 'funk-detail')) + fieldRowHeight(okNokText('navi', 'navi-detail')) + 2 + 6 + 5;
+    sectionTitle('Elektronik', electronicsSectionHeight);
+    fieldRow('Funkgeräte, Telefon & Tablet', okNokText('funk', 'funk-detail'));
+    fieldRow('Navigationsgeräte', okNokText('navi', 'navi-detail'));
+    y += 2;
+    hr(false);
+
+    // ---- Diverses ----
+    const diversesLines = pdf.splitTextToSize(val('diverses') || '-', contentW - 6);
+    const boxH = Math.max(20, diversesLines.length * 4.3 + 6);
+    sectionTitle('Diverses', boxH + 8);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(9);
+    ensureSpace(boxH + 8);
+    pdf.setDrawColor(...lightGray);
+    pdf.setLineWidth(0.3);
+    pdf.rect(marginX, y, contentW, boxH, 'D');
+    pdf.setTextColor(...ink);
+    pdf.text(diversesLines, marginX + 3, y + 6);
+    y += boxH + 8;
+
+    // ---- Footer / signature ----
+    ensureSpace(16);
+    pdf.setDrawColor(...lightGray);
+    pdf.setLineWidth(0.3);
+    pdf.line(marginX, y, pageW - marginX, y);
+    y += 6;
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(9);
+    pdf.setTextColor(68, 68, 68);
+
+    const sigLabel = 'Unterschrift Protokollführer/-in:';
+    const sigValue = val('sig_crew') || '-';
+    const sigLabelWidth = pdf.getTextWidth(sigLabel);
+    const sigLabelX = pageW - marginX - sigLabelWidth - pdf.getTextWidth(sigValue) - 4;
+
+    pdf.text(sigLabel, sigLabelX, y);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(...ink);
+    pdf.text(sigValue, pageW - marginX - pdf.getTextWidth(sigValue), y);
+    y += 8;
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(7);
+    pdf.setTextColor(...mutedGray);
+    pdf.text('Pikettrapport V5.0 / srdp.ch', pageW - marginX, y, { align: 'right' });
 
     return pdf;
   }
