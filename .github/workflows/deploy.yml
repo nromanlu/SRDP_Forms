@@ -19,5 +19,7 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           port: 21
           protocol: ftp
-          local-dir: ./HTLM/Pikettrapport/
+          local-dir: ./HTLM/
           server-dir: ./
+          exclude: |
+            **/*.rtf
