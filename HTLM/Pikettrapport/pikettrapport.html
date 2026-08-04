@@ -468,23 +468,12 @@
   <div class="footer">
     <button class="btn btn-reset" onclick="resetForm()">Zurücksetzen</button>
     <button class="btn btn-submit" onclick="submitForm()">Absenden</button>
-<!--     <div class="sig-row">
-      <label for="sig">Unterschrift Protokollführer/-in:</label>
-      <input type="text" id="sig" placeholder="">
-    </div> -->
     <div class="sig-row">
-      <label for="sig">Unterschrift Protokollführer/-in:</label>
-      <select id="sig_crew" style="flex:1"></select>
-        <option value="Protokollführer/-in"</option>
-      <!-- <input type="text" id="sig" placeholder="Protokollführer/-in"> -->
-    </div>
-<!--     <div class="mannschaft-row">
-      <label></label>
-            <select id="sig" style="flex:1">
+      <label for="sig_crew">Unterschrift Protokollführer/-in:</label>
+      <select id="sig_crew" style="flex:1">
         <option value="">Protokollführer/-in</option>
       </select>
-      <input type="text" id="d1_crew_e" placeholder="Crew hinzfügen" style="flex:2">
-    </div> -->
+    </div>
   </div>
 
   <div class="version-note">Pikettrapport V5.0 / srdp.ch</div>
@@ -543,6 +532,7 @@
   wireSelectPlaceholder('d2_crew_b');
   wireSelectPlaceholder('d2_crew_c');
   wireSelectPlaceholder('d2_crew_d');
+  wireSelectPlaceholder('sig_crew');
 
    /* ---------------------------------------------------- Biene III ---------------------------------------------------- */
   // Show text field when "Nicht i.O." / "Defekt" is selected
@@ -569,7 +559,7 @@
   wireCheck('mot-nok', 'mot-detail');
   wireCheck('schr-nok', 'schr-detail');
 
- 
+
 
   function resetForm() {
     if (confirm('Formular wirklich zurücksetzen?')) {
@@ -588,7 +578,7 @@
   }
 
   async function submitForm() {
-    const sig = document.getElementById('sig').value.trim();
+    const sig = document.getElementById('sig_crew').value.trim();
     if (!sig) {
       alert('Bitte Unterschrift eintragen.');
       return;
@@ -614,103 +604,6 @@
     //window.location.href = mailto;
   
     //alert('PDF heruntergeladen. Mail-App öffnet sich.');
-  }
-</script>
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/de.js"></script>
-<script>
-  flatpickr("#datum1", {
-    dateFormat: "d.m.Y",
-    locale: "de"
-  });
-  flatpickr("#datum2", {
-    dateFormat: "d.m.Y",
-    locale: "de"
-  });
-  flatpickr("#von1", {
-    enableTime: true,
-    noCalendar: true,
-    dateFormat: "H:i",
-    time_24hr: true,
-    locale: "de"
-  });
-  flatpickr("#bis1", {
-    enableTime: true,
-    noCalendar: true,
-    dateFormat: "H:i",
-    time_24hr: true,
-    locale: "de"
-  });
-  flatpickr("#von2", {
-    enableTime: true,
-    noCalendar: true,
-    dateFormat: "H:i",
-    time_24hr: true,
-      select.appendChild(option);
-    });
-  }
-
-  // Show text field when "Nicht i.O." / "Defekt" is selected
-  function wireRadio(name, detailId) {
-    document.querySelectorAll(`input[name="${name}"]`).forEach(r => {
-      r.addEventListener('change', () => {
-        const el = document.getElementById(detailId);
-        const show = (r.value === 'nok' || r.value === 'def') && r.checked;
-        el.classList.toggle('visible', show);
-      });
-    });
-  }
-  function wireCheck(checkId, detailId) {
-    document.getElementById(checkId).addEventListener('change', function() {
-      document.getElementById(detailId).classList.toggle('visible', this.checked);
-    });
-  }
-
-  wireRadio('allg', 'allg-detail');
-  wireRadio('schaeden-a', 'schaeden-a-detail');
-  wireRadio('schaeden-i', 'schaeden-i-detail');
-  wireRadio('funk', 'funk-detail');
-  wireRadio('navi', 'navi-detail');
-  wireCheck('mot-nok', 'mot-detail');
-  wireCheck('schr-nok', 'schr-detail');
-
-  function resetForm() {
-    if (confirm('Formular wirklich zurücksetzen?')) {
-      document.querySelectorAll('input, textarea').forEach(el => {
-        if (el.type === 'radio' || el.type === 'checkbox') el.checked = false;
-        else el.value = '';
-      });
-      document.querySelectorAll('.defekt-input').forEach(el => el.classList.remove('visible'));
-    }
-  }
-
-  async function submitForm() {
-    const sig = document.getElementById('sig').value.trim();
-    if (!sig) {
-      alert('Bitte Unterschrift eintragen.');
-      return;
-    }
-  
-    // PDF generieren (wie in meiner vorherigen Antwort)
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    doc.text('Pikettrapport', 10, 10);
-    doc.text(`Unterschrift: ${sig}`, 10, 20);
-    // ... weitere Felder hinzufügen
-  
-    const pdfBlob = doc.output('blob'); // Als Blob für Download
-    const pdfUrl = URL.createObjectURL(pdfBlob);
-    const link = document.createElement('a');
-    link.href = pdfUrl;
-    link.download = 'Pikettrapport.pdf';
-    link.click(); // Download auf iPad (geht in Downloads-Ordner)
-  
-    // Mailto-Link öffnen
-    const mailto = 'mailto:empfaenger@example.com?subject=Ausgefüllter Pikettrapport&body=' +
-      encodeURIComponent('Hallo,\n\nPDF wurde heruntergeladen. Bitte anhängen.\n\nDaten: ' + JSON.stringify({ sig, /* weitere */ }));
-    window.location.href = mailto;
-  
-    alert('PDF heruntergeladen. Mail-App öffnet sich.');
   }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
