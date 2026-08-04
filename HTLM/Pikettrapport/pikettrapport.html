@@ -752,7 +752,7 @@
     pdf.text('Seerettungsdienst Pfäffikon SZ', titleX, y + 14);
 
     if (gemeindeLogo && gemeindeDims) {
-      const boxW = 42, boxH = 14;
+      const boxW = 42 * 1.25, boxH = 14 * 1.25;
       const ratio = Math.min(boxW / gemeindeDims.width, boxH / gemeindeDims.height);
       const w = gemeindeDims.width * ratio, h = gemeindeDims.height * ratio;
       pdf.addImage(gemeindeLogo, imageFormat(gemeindeLogo), pageW - marginX - w, y + 2, w, h);
