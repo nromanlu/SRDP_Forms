@@ -1,23 +1,23 @@
-name: Deploy to Infomaniak (SFTP)
+name: Deploy to Infomaniak (FTP)
 
 on:
   push:
     branches: [ main ]
 
 jobs:
-  sftp-deploy:
+  ftp-deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: SFTP Deploy
+      - name: FTP Deploy
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          port: 22
-          protocol: sftp
+          port: 21
+          protocol: ftp
           local-dir: ./HTLM/Pikettrapport/
           server-dir: ./
