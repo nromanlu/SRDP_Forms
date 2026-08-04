@@ -468,10 +468,23 @@
   <div class="footer">
     <button class="btn btn-reset" onclick="resetForm()">Zurücksetzen</button>
     <button class="btn btn-submit" onclick="submitForm()">Absenden</button>
-    <div class="sig-row">
+<!--     <div class="sig-row">
       <label for="sig">Unterschrift Protokollführer/-in:</label>
       <input type="text" id="sig" placeholder="">
+    </div> -->
+    <div class="sig-row">
+      <label for="sig">Unterschrift Protokollführer/-in:</label>
+      <select id="sig_crew" style="flex:1"></select>
+        <option value="Protokollführer/-in"</option>
+      <!-- <input type="text" id="sig" placeholder="Protokollführer/-in"> -->
     </div>
+<!--     <div class="mannschaft-row">
+      <label></label>
+            <select id="sig" style="flex:1">
+        <option value="">Protokollführer/-in</option>
+      </select>
+      <input type="text" id="d1_crew_e" placeholder="Crew hinzfügen" style="flex:2">
+    </div> -->
   </div>
 
   <div class="version-note">Pikettrapport V5.0 / srdp.ch</div>
@@ -484,8 +497,8 @@
  /* ---------------------------------------------------- CrewNames ---------------------------------------------------- */
   const CrewNames = ['Patrick Binda', 'Diana Gisi', 'André Guggisberg', 'Andreas Gygax', 
   'Peter Hasler', 'Lukas Kälin', 'Marcel Künzler', 'Tanja Marty', 'Andreas Mollet', 
-  'Marvin Nauer', 'Alexander Reinfrank', 'Nicolás Román L.', 'Michael Staub', 'David Steiner', 
-  'Thomas Stöcklin', 'Stefan Tasić', 'Andreas Tobler', 'Franco Tuscano', 'Massimo Zuliani', 
+  'Marvin Nauer', 'Alexander Reinfrank', 'Nicolás Román L.', 'Jan Rosemeyer', 'Michael Staub', 'David Steiner', 
+  'Thomas Stöcklin', 'Stefan Tasić', 'Andreas Tobler', 'Franco Tuscano', 'Christina Vauk', 'Massimo Zuliani', 
   'Markus Züger'];
 
   function populateCrewSelect(selectId) {
@@ -508,6 +521,8 @@
    populateCrewSelect('d2_crew_b');
    populateCrewSelect('d2_crew_c');
    populateCrewSelect('d2_crew_d');
+
+    populateCrewSelect('sig_crew');
 
   function updateSelectPlaceholderState(select) {
     select.classList.toggle('placeholder', select.value === '');
