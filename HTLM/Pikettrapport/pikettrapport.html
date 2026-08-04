@@ -12,10 +12,10 @@
 
     body {
       font-family: 'Source Sans 3', sans-serif;
-      font-size: 13px;
+      font-size: 11px;
       background: #f2f2ec;
       color: #1a1a1a;
-      padding: 24px 16px 40px;
+      padding: 18px 16px 28px;
     }
 
     .page {
@@ -23,7 +23,7 @@
       margin: 0 auto;
       background: #fff;
       border: 1px solid #ccc;
-      padding: 28px 32px 32px;
+      padding: 20px 26px 24px;
       box-shadow: 0 2px 12px rgba(0,0,0,.08);
     }
 
@@ -32,26 +32,26 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 20px;
+      margin-bottom: 17px;
       gap: 12px;
     }
-    .header-logo { width: 90px; height: 90px; flex-shrink: 0; }
+    .header-logo { width: 79px; height: 79px; flex-shrink: 0; }
     .header-logo img { width: 100%; height: 100%; object-fit: contain; }
     .header-title { flex: 1; }
     .header-title h1 {
       font-family: 'Source Serif 4', serif;
-      font-size: 38px;
+      font-size: 33px;
       font-weight: 600;
       line-height: 1.1;
       letter-spacing: -.5px;
     }
     .header-title p {
-      font-size: 19px;
+      font-size: 16.5px;
       color: #555;
       margin-top: 2px;
     }
-    .header-badge { width: 240px; flex-shrink: 0; text-align: right; }
-    .header-badge img { width: auto; height: 55px; display: block; }
+    .header-badge { width: 210px; flex-shrink: 0; text-align: right; }
+    .header-badge img { width: auto; height: 49px; display: block; }
     .badge-box {
       display: inline-block;
       border: 2px solid #c8151b;
@@ -63,36 +63,36 @@
     .badge-box .name { font-size: 14px; font-weight: 700; color: #c8151b; }
 
     /* ---------------------------------------------------- DIVIDER ---------------------------------------------------- */
-    hr { border: none; border-top: 2px solid #1a1a1a; margin: 0 0 14px; }
-    hr.thin { border-top: 1px solid #ccc; margin: 14px 0; }
+    hr { border: none; border-top: 2px solid #1a1a1a; margin: 0 0 10px; }
+    hr.thin { border-top: 1px solid #ccc; margin: 10px 0; }
 
     /* ---------------------------------------------------- SECTION LABEL ---------------------------------------------------- */
     .section-title {
       font-weight: 700;
-      font-size: 12.5px;
-      margin-bottom: 8px;
+      font-size: 11px;
+      margin-bottom: 6px;
       text-transform: uppercase;
       letter-spacing: .4px;
       color: #1a1a1a;
     }
 
     /* ---------------------------------------------------- DATE ROWS ---------------------------------------------------- */
-    .date-block { margin-bottom: 14px; }
+    .date-block { margin-bottom: 10px; }
     .date-row {
       display: flex;
       align-items: center;
       gap: 8px;
-      margin-bottom: 5px;
+      margin-bottom: 4px;
     }
     .date-row label { font-weight: 700; min-width: 88px; }
     .date-row input[type="text"] { width: 130px; }
     .date-row .time-group { display: flex; align-items: center; gap: 4px; }
-    .date-row .time-group span { font-size: 11px; color: #666; }
+    .date-row .time-group span { font-size: 10px; color: #666; }
     .mannschaft-row {
       display: flex;
       align-items: center;
       gap: 8px;
-      margin-bottom: 3px;
+      margin-bottom: 2px;
     }
     .mannschaft-row label { min-width: 88px; color: #444; }
     .mannschaft-row input, .mannschaft-row select { flex: 1; }
@@ -105,9 +105,9 @@
       border: none;
       border-bottom: 1.5px solid #aaa;
       background: #f7f7f5;
-      padding: 3px 6px;
+      padding: 2px 5px;
       font-family: inherit;
-      font-size: 12.5px;
+      font-size: 11px;
       color: #1a1a1a;
       outline: none;
       transition: border-color .15s;
@@ -126,27 +126,27 @@
     input[type="number"] { width: 64px; text-align: right; }
 
     /* ---------------------------------------------------- TABLE GRID ---------------------------------------------------- */
-    .grid { display: grid; gap: 6px 0; }
+    .grid { display: grid; gap: 4px 0; }
 
     .field-row {
       display: grid;
-      grid-template-columns: 140px 1fr;
+      grid-template-columns: 130px 1fr;
       align-items: center;
-      padding: 3px 0;
+      padding: 2px 0;
       border-bottom: 1px solid #ebebeb;
     }
     .field-row:last-child { border-bottom: none; }
-    .field-label { font-size: 12.5px; color: #333; }
-    .field-control { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .field-label { font-size: 11px; color: #333; }
+    .field-control { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
     /* ---------------------------------------------------- RADIO / CHECKBOX ---------------------------------------------------- */
-    .radio-group, .check-group { display: flex; align-items: center; gap: 14px; }
+    .radio-group, .check-group { display: flex; align-items: center; gap: 12px; }
     .radio-group label, .check-group label {
-      display: flex; align-items: center; gap: 5px;
-      cursor: pointer; font-size: 12.5px;
+      display: flex; align-items: center; gap: 4px;
+      cursor: pointer; font-size: 11px;
     }
     input[type="radio"], input[type="checkbox"] {
-      width: 14px; height: 14px; cursor: pointer;
+      width: 12px; height: 12px; cursor: pointer;
       accent-color: #1a4fa0;
       border: none; background: none;
     }
@@ -154,18 +154,18 @@
     .defekt-input.visible { display: inline-block; width: 180px; }
 
     /* ---------------------------------------------------- ENGINES ROW ---------------------------------------------------- */
-    .engine-row .field-control { gap: 6px; }
-    .inline-label { font-size: 11.5px; color: #555; margin-left: 2px; }
+    .engine-row .field-control { gap: 5px; }
+    .inline-label { font-size: 10px; color: #555; margin-left: 2px; }
 
     /* ---------------------------------------------------- MASCHINEN TABLE ---------------------------------------------------- */
-    .maschinen-table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+    .maschinen-table { width: 100%; border-collapse: collapse; margin-top: 4px; }
     .maschinen-table th {
-      font-weight: 700; font-size: 11.5px; text-align: center;
-      padding: 5px 8px; background: #f0f0ec; border: 1px solid #ccc;
+      font-weight: 700; font-size: 10px; text-align: center;
+      padding: 4px 6px; background: #f0f0ec; border: 1px solid #ccc;
     }
-    .maschinen-table th:first-child { text-align: left; width: 160px; }
+    .maschinen-table th:first-child { text-align: left; width: 150px; }
     .maschinen-table td {
-      padding: 5px 8px; border: 1px solid #ddd; font-size: 12px; text-align: center; vertical-align: middle;
+      padding: 4px 6px; border: 1px solid #ddd; font-size: 10.5px; text-align: center; vertical-align: middle;
     }
     .maschinen-table td:first-child { text-align: left; font-weight: 600; }
     .maschinen-table input[type="number"] { width: 70px; }
@@ -173,26 +173,28 @@
 
     /* ---------------------------------------------------- DIVERSES TEXTAREA ---------------------------------------------------- */
     .diverses-area {
-      width: 100%; height: 110px; resize: vertical;
+      width: 100%; height: 80px; resize: vertical;
       border: 1.5px solid #aaa; border-radius: 2px;
-      padding: 6px 8px; font-family: inherit; font-size: 12.5px;
-      background: #f7f7f5; margin-top: 4px;
+      padding: 5px 7px; font-family: inherit; font-size: 11px;
+      background: #f7f7f5; margin-top: 3px;
     }
     .diverses-area:focus { border-color: #1a4fa0; background: #eef3fb; outline: none; }
 
     /* ---------------------------------------------------- FOOTER ---------------------------------------------------- */
     .footer {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
-      gap: 16px;
-      margin-top: 20px;
-      padding-top: 14px;
+      gap: 12px;
+      margin-top: 14px;
+      padding-top: 10px;
       border-top: 1px solid #ccc;
     }
+    .footer-actions { display: flex; gap: 12px; flex: 0 0 calc(50% - 6px); }
     .btn {
-      padding: 7px 20px;
+      padding: 6px 16px;
       font-family: inherit;
-      font-size: 12.5px;
+      font-size: 11px;
       font-weight: 700;
       border: none;
       border-radius: 3px;
@@ -205,16 +207,21 @@
     .btn-reset:hover { opacity: .85; }
     .btn-submit { background: #2a7a2a; color: #fff; }
     .btn-submit:hover { opacity: .88; }
-    .sig-row { display: flex; align-items: center; gap: 8px; flex: 1; }
-    .sig-row label { white-space: nowrap; font-size: 12px; color: #444; }
+    .btn:disabled { opacity: .6; cursor: default; }
+    .sig-row { display: flex; align-items: center; gap: 8px; flex: 1 1 calc(50% - 6px); min-width: 260px; }
+    .sig-row label { white-space: nowrap; font-size: 10.5px; color: #444; }
     .sig-row input { flex: 1; }
 
     .version-note {
       text-align: right;
-      font-size: 10px;
+      font-size: 9px;
       color: #999;
-      margin-top: 12px;
+      margin-top: 8px;
     }
+
+    /* ---------------------------------------------------- PDF EXPORT ---------------------------------------------------- */
+    /* Elements with this class are hidden only while html2canvas captures the .page for the PDF */
+    .pdf-hide { display: none !important; }
   </style>
 </head>
 <body>
@@ -466,8 +473,10 @@
 
   <!-- FOOTER -->
   <div class="footer">
-    <button class="btn btn-reset" onclick="resetForm()">Zurücksetzen</button>
-    <button class="btn btn-submit" onclick="submitForm()">Absenden</button>
+    <div class="footer-actions">
+      <button class="btn btn-reset" onclick="resetForm()">Zurücksetzen</button>
+      <button class="btn btn-submit" id="submitBtn" onclick="submitForm()">Absenden</button>
+    </div>
     <div class="sig-row">
       <label for="sig_crew">Unterschrift Protokollführer/-in:</label>
       <select id="sig_crew" style="flex:1">
@@ -480,6 +489,9 @@
 
 </div>
 
+
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 
 <script>
  /* ==================================================== SCRIPTS ==================================================== */
@@ -531,7 +543,6 @@
   wireSelectPlaceholder('d2_crew_a');
   wireSelectPlaceholder('d2_crew_b');
   wireSelectPlaceholder('d2_crew_c');
-  wireSelectPlaceholder('d2_crew_d');
   wireSelectPlaceholder('sig_crew');
 
    /* ---------------------------------------------------- Biene III ---------------------------------------------------- */
@@ -577,33 +588,98 @@
     }
   }
 
+  /* ---------------------------------------------------- PDF GENERATION ---------------------------------------------------- */
+  // Screenshots the white ".page" section (with all filled-in values) and turns it into a
+  // multi-page A4 PDF, preserving the exact look of the form.
+  async function generatePDF() {
+    const element = document.querySelector('.page');
+
+    // Hide the Reset/Absenden buttons just for the screenshot — they shouldn't appear in the report.
+    const buttonsToHide = document.querySelectorAll('.footer .btn');
+    buttonsToHide.forEach(b => b.classList.add('pdf-hide'));
+
+    let canvas;
+    try {
+      canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff'
+      });
+    } finally {
+      buttonsToHide.forEach(b => b.classList.remove('pdf-hide'));
+    }
+
+    const imgData = canvas.toDataURL('image/png');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const imgWidth = pageWidth;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+    let heightLeft = imgHeight;
+    let position = 0;
+
+    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+
+    while (heightLeft > 0) {
+      position = heightLeft - imgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+
+    return pdf;
+  }
+
+  function buildFilename() {
+    const datum1 = document.getElementById('datum1').value.trim();
+    const safeDate = datum1 ? datum1.replace(/\./g, '-') : new Date().toISOString().slice(0, 10);
+    return `Pikettrapport_${safeDate}.pdf`;
+  }
+
   async function submitForm() {
     const sig = document.getElementById('sig_crew').value.trim();
     if (!sig) {
       alert('Bitte Unterschrift eintragen.');
       return;
     }
-  /*
-    // PDF generieren (wie in meiner vorherigen Antwort)
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    doc.text('Pikettrapport', 10, 10);
-    doc.text(`Unterschrift: ${sig}`, 10, 20);
-    // ... weitere Felder hinzufügen
-  
-    const pdfBlob = doc.output('blob'); // Als Blob für Download
-    const pdfUrl = URL.createObjectURL(pdfBlob);
-    const link = document.createElement('a');
-    link.href = pdfUrl;
-    link.download = 'Pikettrapport.pdf';
-    link.click(); // Download auf iPad (geht in Downloads-Ordner)
-  */
-    // Mailto-Link öffnen
-    //const mailto = 'mailto:empfaenger@example.com?subject=Ausgefüllter Pikettrapport&body=' +
-    //  encodeURIComponent('Hallo,\n\nPDF wurde heruntergeladen. Bitte anhängen.\n\nDaten: ' + JSON.stringify({ sig, /* weitere */ }));
-    //window.location.href = mailto;
-  
-    //alert('PDF heruntergeladen. Mail-App öffnet sich.');
+
+    const submitBtn = document.getElementById('submitBtn');
+    const resetBtn = document.querySelector('.btn-reset');
+    const originalLabel = submitBtn.textContent;
+    submitBtn.textContent = 'PDF wird erstellt…';
+    submitBtn.disabled = true;
+    resetBtn.disabled = true;
+
+    try {
+      const pdf = await generatePDF();
+      const filename = buildFilename();
+      pdf.save(filename);
+
+      // Give the browser a moment to start the download before we navigate to the mailto: link.
+      setTimeout(() => {
+        const datum1 = document.getElementById('datum1').value.trim();
+        const subject = encodeURIComponent(`Pikettrapport${datum1 ? ' ' + datum1 : ''}`);
+        const body = encodeURIComponent(
+          'Hallo\n\n' +
+          'Im Anhang der ausgefüllte Pikettrapport.\n\n' +
+          `Bitte die soeben heruntergeladene Datei "${filename}" aus dem Downloads-Ordner anhängen, bevor du sendest.\n\n` +
+          `Unterschrift Protokollführer/-in: ${sig}`
+        );
+        window.location.href = `mailto:n.romanlu@gmail.com?subject=${subject}&body=${body}`;
+      }, 800);
+
+    } catch (err) {
+      console.error(err);
+      alert('Beim Erstellen des PDFs ist ein Fehler aufgetreten. Bitte erneut versuchen.');
+    } finally {
+      submitBtn.textContent = originalLabel;
+      submitBtn.disabled = false;
+      resetBtn.disabled = false;
+    }
   }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
