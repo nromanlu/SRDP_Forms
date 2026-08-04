@@ -1,6 +1,15 @@
-- name: Debug secret presence
+name: Debug FTP Secret
+
+on:
+  workflow_dispatch:
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Debug secret presence
         run: |
-          if [ -z "${{ secrets.FTP_SERVER }}" ]; then
+          if [ -z "$FTP_SERVER" ]; then
             echo "FTP_SERVER is EMPTY or not found"
           else
             echo "FTP_SERVER length: ${#FTP_SERVER}"
