@@ -942,40 +942,32 @@
         `Unterschrift Protokollführer/-in: ${sig}`;
 
       const pdfBlob = pdf.output('blob');
-      const pdfFile = new File([pdfBlob], filename, { type: 'application/pdf' });
 
-      // On iPad/iOS (and most modern mobile browsers), the Web Share API can hand the PDF
-      // straight to the share sheet — tapping "Mail" opens a new message with the file
-      // already attached. It can't pre-fill the recipient (the Share API has no "to" field),
-      // so the address still needs to be picked once there.
-      if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
-        try {
-          await navigator.share({
-            files: [pdfFile],
-            title: subject,
-            text: bodyText
-          });
-        } catch (shareErr) {
-          // AbortError just means the person closed the share sheet — not a real failure.
-          if (!shareErr || shareErr.name !== 'AbortError') {
-            throw shareErr;
-          }
-        }
-      } else {
-        // Fallback for browsers without file sharing (e.g. most desktop browsers):
-        // download the PDF, then open a pre-addressed mailto: draft to attach it manually.
-        pdf.save(filename);
-        await new Promise(resolve => setTimeout(resolve, 800));
-        const subjectEnc = encodeURIComponent(subject);
-        const bodyEnc = encodeURIComponent(
-          bodyText + `\n\nBitte die soeben heruntergeladene Datei "${filename}" aus dem Downloads-Ordner anhängen, bevor du sendest.`
-        );
-        window.location.href = `mailto:n.romanlu@gmail.com?subject=${subjectEnc}&body=${bodyEnc}`;
+      submitBtn.textContent = 'Wird gesendet…';
+
+      const formData = new FormData();
+      formData.append('pdf', pdfBlob, filename);
+      formData.append('subject', subject);
+      formData.append('body', bodyText);
+      formData.append('filename', filename);
+
+      const response = await fetch('send-report.php', {
+        method: 'POST',
+        body: formData
+      });
+
+      let result = null;
+      try { result = await response.json(); } catch (e) { /* non-JSON response */ }
+
+      if (!response.ok || !result || !result.success) {
+        throw new Error((result && result.error) || `Versand fehlgeschlagen (${response.status})`);
       }
+
+      alert('Pikettrapport wurde gesendet.');
 
     } catch (err) {
       console.error(err);
-      alert('Beim Erstellen des PDFs ist ein Fehler aufgetreten. Bitte erneut versuchen.');
+      alert('Beim Senden des Pikettrapports ist ein Fehler aufgetreten. Bitte erneut versuchen.');
     } finally {
       submitBtn.textContent = originalLabel;
       submitBtn.disabled = false;
