@@ -21,7 +21,7 @@ $RECIPIENT   = 'n.romanlu@gmail.com';
 // ideally a real mailbox you've created (better deliverability / less likely
 // to land in spam than a made-up noreply@ address). If you have a real mailbox
 // on nr-works.dev, use it here instead.
-$FROM_ADDR   = 'noreply@nr-works.dev';
+$FROM_ADDR   = 'noreply@nr-works.ch';
 $FROM_NAME   = 'Pikettrapport SRDP';
 $MAX_PDF_MB  = 10;
 
