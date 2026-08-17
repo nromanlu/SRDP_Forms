@@ -442,7 +442,7 @@
   <div class="section-title">Elektronik</div>
   <div class="grid">
     <div class="field-row">
-      <div class="field-label">Funkgeräte, Telefon & Tablet</div>
+      <div class="field-label">Funkgeräte u.a. mobile Geräte</div>
       <div class="field-control">
         <div class="radio-group">
           <label><input type="radio" name="funk" value="ok"> Alles i.O.</label>
@@ -693,18 +693,13 @@
       y += thick ? 6 : 5;
     }
 
-    function sectionTitle(text, neededHeight = 0) {
-      ensureSpace(9 + neededHeight);
+    function sectionTitle(text) {
+      ensureSpace(9);
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(9.5);
       pdf.setTextColor(...ink);
       pdf.text(text.toUpperCase(), marginX, y);
       y += 6;
-    }
-
-    function fieldRowHeight(value) {
-      const lines = pdf.splitTextToSize(value, contentW - 50);
-      return lines.length * 4.4 + 4.5;
     }
 
     function fieldRow(label, value) {
@@ -752,7 +747,7 @@
     pdf.text('Seerettungsdienst Pfäffikon SZ', titleX, y + 14);
 
     if (gemeindeLogo && gemeindeDims) {
-      const boxW = 42 * 1.25, boxH = 14 * 1.25;
+      const boxW = 42, boxH = 14;
       const ratio = Math.min(boxW / gemeindeDims.width, boxH / gemeindeDims.height);
       const w = gemeindeDims.width * ratio, h = gemeindeDims.height * ratio;
       pdf.addImage(gemeindeLogo, imageFormat(gemeindeLogo), pageW - marginX - w, y + 2, w, h);
@@ -802,16 +797,7 @@
     hr(true);
 
     // ---- Boot (Biene III) ----
-    const bootSectionHeight = [
-      fieldRowHeight(okNokText('allg', 'allg-detail')),
-      fieldRowHeight(okNokText('schaeden-a', 'schaeden-a-detail')),
-      fieldRowHeight(okNokText('schaeden-i', 'schaeden-i-detail')),
-      fieldRowHeight(engineText('mot-bb', 'mot-stb', 'mot-nok', 'mot-detail')),
-      fieldRowHeight(engineText('schr-bb', 'schr-stb', 'schr-nok', 'schr-detail')),
-      fieldRowHeight(`${val('mot-h-bb') || '0'} h Bb   /   ${val('mot-h-stb') || '0'} h Stb (eingerückt)`),
-      fieldRowHeight(`${val('treibstoff') || '0'} Liter Diesel gebunkert`)
-    ].reduce((sum, value) => sum + value, 0) + 2 + 6 + 5;
-    sectionTitle('Boot (Biene III)', bootSectionHeight);
+    sectionTitle('Boot (Biene III)');
     fieldRow('Allgemeiner Zustand', okNokText('allg', 'allg-detail'));
     fieldRow('Schäden aussen', okNokText('schaeden-a', 'schaeden-a-detail'));
     fieldRow('Schäden innen', okNokText('schaeden-i', 'schaeden-i-detail'));
@@ -823,6 +809,7 @@
     hr(false);
 
     // ---- Maschinen table ----
+    sectionTitle('Maschinen');
     const colW = [40, (contentW - 40) / 3, (contentW - 40) / 3, (contentW - 40) / 3];
     const headerLabels = ['', 'Löschpumpe\n(JOHSTADT)', 'Schmutzwasserpumpe\n(Honda)', 'Stromaggregat\n(Honda)'];
     const rows = [
@@ -831,8 +818,6 @@
       ['Treibstoff', `${val('m1-l') || '0'} L`, `${val('m2-l') || '0'} L`, `${val('m3-l') || '0'} L`]
     ];
     const headerRowH = 11, dataRowH = 7;
-    const machinesSectionHeight = headerRowH + dataRowH * rows.length + 6 + 5;
-    sectionTitle('Maschinen', machinesSectionHeight);
     ensureSpace(headerRowH + dataRowH * rows.length + 4);
 
     let cx = marginX;
@@ -877,27 +862,25 @@
     hr(false);
 
     // ---- Material ----
-    const materialSectionHeight = fieldRowHeight(val('mat-ersetzen') || '-') + fieldRowHeight(val('mat-reparieren') || '-') + 2 + 6 + 5;
-    sectionTitle('Material', materialSectionHeight);
+    sectionTitle('Material');
     fieldRow('Ersetzen:', val('mat-ersetzen') || '-');
     fieldRow('Reparieren:', val('mat-reparieren') || '-');
     y += 2;
     hr(false);
 
     // ---- Elektronik ----
-    const electronicsSectionHeight = fieldRowHeight(okNokText('funk', 'funk-detail')) + fieldRowHeight(okNokText('navi', 'navi-detail')) + 2 + 6 + 5;
-    sectionTitle('Elektronik', electronicsSectionHeight);
-    fieldRow('Funkgeräte, Telefon & Tablet', okNokText('funk', 'funk-detail'));
+    sectionTitle('Elektronik');
+    fieldRow('Funkgeräte u.a. mobile Geräte', okNokText('funk', 'funk-detail'));
     fieldRow('Navigationsgeräte', okNokText('navi', 'navi-detail'));
     y += 2;
     hr(false);
 
     // ---- Diverses ----
-    const diversesLines = pdf.splitTextToSize(val('diverses') || '-', contentW - 6);
-    const boxH = Math.max(20, diversesLines.length * 4.3 + 6);
-    sectionTitle('Diverses', boxH + 8);
+    sectionTitle('Diverses');
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(9);
+    const diversesLines = pdf.splitTextToSize(val('diverses') || '-', contentW - 6);
+    const boxH = Math.max(20, diversesLines.length * 4.3 + 6);
     ensureSpace(boxH + 8);
     pdf.setDrawColor(...lightGray);
     pdf.setLineWidth(0.3);
@@ -915,16 +898,10 @@
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(9);
     pdf.setTextColor(68, 68, 68);
-
-    const sigLabel = 'Unterschrift Protokollführer/-in:';
-    const sigValue = val('sig_crew') || '-';
-    const sigLabelWidth = pdf.getTextWidth(sigLabel);
-    const sigLabelX = pageW - marginX - sigLabelWidth - pdf.getTextWidth(sigValue) - 4;
-
-    pdf.text(sigLabel, sigLabelX, y);
+    pdf.text('Unterschrift Protokollführer/-in:', marginX, y);
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(...ink);
-    pdf.text(sigValue, pageW - marginX - pdf.getTextWidth(sigValue), y);
+    pdf.text(val('sig_crew') || '-', marginX + 62, y);
     y += 8;
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(7);
@@ -957,20 +934,44 @@
     try {
       const pdf = await generatePDF();
       const filename = buildFilename();
-      pdf.save(filename);
+      const datum1 = document.getElementById('datum1').value.trim();
+      const subject = `Pikettrapport${datum1 ? ' ' + datum1 : ''}`;
+      const bodyText =
+        'Hallo\n\n' +
+        'Im Anhang der ausgefüllte Pikettrapport.\n\n' +
+        `Unterschrift Protokollführer/-in: ${sig}`;
 
-      // Give the browser a moment to start the download before we navigate to the mailto: link.
-      setTimeout(() => {
-        const datum1 = document.getElementById('datum1').value.trim();
-        const subject = encodeURIComponent(`Pikettrapport${datum1 ? ' ' + datum1 : ''}`);
-        const body = encodeURIComponent(
-          'Hallo\n\n' +
-          'Im Anhang der ausgefüllte Pikettrapport.\n\n' +
-          `Bitte die soeben heruntergeladene Datei "${filename}" aus dem Downloads-Ordner anhängen, bevor du sendest.\n\n` +
-          `Unterschrift Protokollführer/-in: ${sig}`
+      const pdfBlob = pdf.output('blob');
+      const pdfFile = new File([pdfBlob], filename, { type: 'application/pdf' });
+
+      // On iPad/iOS (and most modern mobile browsers), the Web Share API can hand the PDF
+      // straight to the share sheet — tapping "Mail" opens a new message with the file
+      // already attached. It can't pre-fill the recipient (the Share API has no "to" field),
+      // so the address still needs to be picked once there.
+      if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+        try {
+          await navigator.share({
+            files: [pdfFile],
+            title: subject,
+            text: bodyText
+          });
+        } catch (shareErr) {
+          // AbortError just means the person closed the share sheet — not a real failure.
+          if (!shareErr || shareErr.name !== 'AbortError') {
+            throw shareErr;
+          }
+        }
+      } else {
+        // Fallback for browsers without file sharing (e.g. most desktop browsers):
+        // download the PDF, then open a pre-addressed mailto: draft to attach it manually.
+        pdf.save(filename);
+        await new Promise(resolve => setTimeout(resolve, 800));
+        const subjectEnc = encodeURIComponent(subject);
+        const bodyEnc = encodeURIComponent(
+          bodyText + `\n\nBitte die soeben heruntergeladene Datei "${filename}" aus dem Downloads-Ordner anhängen, bevor du sendest.`
         );
-        window.location.href = `mailto:n.romanlu@gmail.com?subject=${subject}&body=${body}`;
-      }, 800);
+        window.location.href = `mailto:n.romanlu@gmail.com?subject=${subjectEnc}&body=${bodyEnc}`;
+      }
 
     } catch (err) {
       console.error(err);
