@@ -956,18 +956,23 @@
         body: formData
       });
 
+      const rawText = await response.text();
       let result = null;
-      try { result = await response.json(); } catch (e) { /* non-JSON response */ }
+      try { result = JSON.parse(rawText); } catch (e) { /* not JSON — likely a PHP error page */ }
 
       if (!response.ok || !result || !result.success) {
-        throw new Error((result && result.error) || `Versand fehlgeschlagen (${response.status})`);
+        const detail = (result && result.error)
+          || (rawText ? rawText.trim().slice(0, 300) : '')
+          || `HTTP ${response.status}`;
+        throw new Error(detail);
       }
 
       alert('Pikettrapport wurde gesendet.');
 
     } catch (err) {
       console.error(err);
-      alert('Beim Senden des Pikettrapports ist ein Fehler aufgetreten. Bitte erneut versuchen.');
+      const detail = (err && err.message) ? err.message : String(err);
+      alert('Beim Senden des Pikettrapports ist ein Fehler aufgetreten:\n\n' + detail);
     } finally {
       submitBtn.textContent = originalLabel;
       submitBtn.disabled = false;
