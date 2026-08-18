@@ -219,11 +219,16 @@
 
     /* ---------------------------------------------------- PDF EXPORT ---------------------------------------------------- */
     /* Reduce margins for PDF/print output */
-    @page { size: A4; margin: 6mm; }
+    @page { size: A4; margin: 5mm; }
 
     @media print {
       body { background: #fff; padding: 0; }
-      .page { margin: 0; max-width: none; box-shadow: none; border: none; padding: 8px; }
+      .page { margin: 0; max-width: none; box-shadow: none; border: none; padding: 5px; }
+
+      /* Make header badge larger on PDF/print */
+      .header-badge { width: 260px; }
+      .header-badge img { height: 84px; width: auto; }
+      .header-title h1 { font-size: 34px; }
     }
 
     /* Elements with this class are hidden only while html2canvas captures the .page for the PDF */
