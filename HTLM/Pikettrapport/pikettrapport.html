@@ -791,7 +791,7 @@
       const crewLines = pdf.splitTextToSize(crewList(crewPrefix) || '-', contentW - 30);
       ensureSpace(crewLines.length * 4.2 + 4);
       pdf.text(crewLines, marginX + 30, y);
-      y += crewLines.length * 4.2 + 2;
+      y += crewLines.length * 4.2 + 1;
     }
 
     dateBlock('Datum Tag 1:', 'datum1', 'von1', 'bis1', 'd1_crew');
@@ -807,7 +807,7 @@
     fieldRow('Schrauben', engineText('schr-bb', 'schr-stb', 'schr-nok', 'schr-detail'));
     fieldRow('Motorenstunden', `${val('mot-h-bb') || '0'} h Bb   /   ${val('mot-h-stb') || '0'} h Stb (eingerückt)`);
     fieldRow('Treibstoff', `${val('treibstoff') || '0'} Liter Diesel gebunkert`);
-    y += 1;
+    y += 0.5;
     hr(false);
 
     // ---- Maschinen table ----
@@ -857,7 +857,7 @@
       });
       cx += w;
     });
-    y += headerRowH + 2;
+    y += headerRowH;
 
     rows.forEach(row => {
       cx = marginX;
@@ -875,21 +875,21 @@
       });
       y += dataRowH;
     });
-    y += 1;
+    y += 0.5;
     hr(false);
 
     // ---- Material ----
     sectionTitle('Material');
     fieldRow('Ersetzen:', val('mat-ersetzen') || '-');
     fieldRow('Reparieren:', val('mat-reparieren') || '-');
-    y += 1;
+    y += 0.5;
     hr(false);
 
     // ---- Elektronik ----
     sectionTitle('Elektronik');
     fieldRow('Funkgeräte u.a. mobile Geräte', okNokText('funk', 'funk-detail'));
     fieldRow('Navigationsgeräte', okNokText('navi', 'navi-detail'));
-    y += 1;
+    y += 0.5;
     hr(false);
 
     // ---- Diverses ----
