@@ -489,7 +489,7 @@
     </div>
   </div>
 
-  <div class="version-note">Pikettrapport V5.0 / srdp.ch</div>
+  <div class="version-note">Pikettrapport V5.1 / srdp.ch</div>
 
 </div>
 
@@ -499,7 +499,7 @@
 <script>
  /* ==================================================== SCRIPTS ==================================================== */
  /* ---------------------------------------------------- CrewNames ---------------------------------------------------- */
-  const CrewNames = ['Patrick Binda', 'Diana Gisi', 'André Guggisberg', 'Andreas Gygax', 
+  const CrewNames = ['Patrick Binda', 'Christoph Fretz', 'Diana Gisi', 'André Guggisberg', 'Andreas Gygax', 
   'Peter Hasler', 'Lukas Kälin', 'Marcel Künzler', 'Tanja Marty', 'Andreas Mollet', 
   'Marvin Nauer', 'Alexander Reinfrank', 'Nicolás Román L.', 'Jan Rosemeyer', 'Michael Staub', 'David Steiner', 
   'Thomas Stöcklin', 'Stefan Tasić', 'Andreas Tobler', 'Franco Tuscano', 'Christina Vauk', 'Massimo Zuliani', 
@@ -812,14 +812,30 @@
 
     // ---- Maschinen table ----
     sectionTitle('Maschinen');
+
     const colW = [40, (contentW - 40) / 3, (contentW - 40) / 3, (contentW - 40) / 3];
-    const headerLabels = ['', 'Löschpumpe (JOHSTADT)', 'Schmutzwasserpumpe (Honda)', 'Stromaggregat  (Honda)'];
+    const headerLabels = ['', 'Löschpumpe (JOHSTADT)', 'Schmutzwasserpumpe (Honda)', 'Stromaggregat (Honda)'];
     const rows = [
       ['Allgemeiner Zustand', isChecked('m1-ok') ? 'i.O.' : '-', isChecked('m2-ok') ? 'i.O.' : '-', isChecked('m3-ok') ? 'i.O.' : '-'],
       ['Betriebsdauer', `${val('m1-min') || '0'} min`, `${val('m2-min') || '0'} min`, `${val('m3-min') || '0'} min`],
       ['Treibstoff', `${val('m1-l') || '0'} L`, `${val('m2-l') || '0'} L`, `${val('m3-l') || '0'} L`]
     ];
-    const headerRowH = 7, dataRowH = 6;
+
+    // Header text is wrapped to fit each column's actual width so long labels
+    // (e.g. "Schmutzwasserpumpe (Honda)") no longer clip or bleed into the
+    // next cell. Font size stays 9pt — only the wrapping/row height changed.
+    const headerPaddingX = 2;
+    const headerLineHeight = 3.4;
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(9);
+    const headerWrapped = headerLabels.map((label, i) => {
+      if (i === 0 || !label) return [];
+      return pdf.splitTextToSize(label, colW[i] - headerPaddingX * 2);
+    });
+    const headerMaxLines = Math.max(1, ...headerWrapped.map(lines => lines.length));
+    const headerRowH = headerMaxLines * headerLineHeight + 3.5;
+    const dataRowH = 6;
+
     ensureSpace(headerRowH + dataRowH * rows.length + 4);
 
     let cx = marginX;
@@ -832,13 +848,12 @@
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(9);
       pdf.setTextColor(...ink);
-      const lines = headerLabels[i].split('\n');
-      const lineHeight = 3.2;
-      const totalH = lines.length * lineHeight;
-      let ty = y + headerRowH / 2 - totalH / 2 + lineHeight * 0.8;
+      const lines = headerWrapped[i];
+      const totalH = lines.length * headerLineHeight;
+      let ty = y + headerRowH / 2 - totalH / 2 + headerLineHeight * 0.8;
       lines.forEach(line => {
         pdf.text(line, cx + w / 2, ty, { align: 'center' });
-        ty += lineHeight;
+        ty += headerLineHeight;
       });
       cx += w;
     });
@@ -911,7 +926,7 @@
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(7);
     pdf.setTextColor(...mutedGray);
-    pdf.text('Pikettrapport V5.0 / srdp.ch', pageW - marginX, y, { align: 'right' });
+    pdf.text('Pikettrapport V5.1 / srdp.ch', pageW - marginX, y, { align: 'right' });
 
     return pdf;
   }
