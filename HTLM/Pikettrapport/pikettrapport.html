@@ -781,7 +781,7 @@
       pdf.setFontSize(9);
       pdf.setTextColor(...ink);
       pdf.text(val(bisId) || '-', marginX + 104, y);
-      y += 5;
+      y += 2;
 
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(9);
@@ -842,7 +842,7 @@
       });
       cx += w;
     });
-    y += headerRowH;
+    y += headerRowH + 1;
 
     rows.forEach(row => {
       cx = marginX;
@@ -894,7 +894,7 @@
     // ---- Footer / signature ----
     ensureSpace(16);
     pdf.setFontSize(9);
-    const sigLabel = 'Unterschrift Protokollführer/-in: ';
+    const sigLabel = 'Unterschrift Protokollführer/-in:   ';
     const sigName = val('sig_crew') || '-';
     pdf.setFont('helvetica', 'normal');
     const sigLabelWidth = pdf.getTextWidth(sigLabel);
