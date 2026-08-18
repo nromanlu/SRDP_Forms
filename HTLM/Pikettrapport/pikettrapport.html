@@ -688,7 +688,7 @@
     function ensureSpace(needed) {
       if (y + needed > bottomLimit) {
         pdf.addPage();
-        y = 10;
+        y = 5;
       }
     }
 
@@ -697,7 +697,7 @@
       pdf.setDrawColor(...(thick ? ink : lightGray));
       pdf.setLineWidth(thick ? 0.6 : 0.3);
       pdf.line(marginX, y, pageW - marginX, y);
-      y += thick ? 4 : 4;
+      y += thick ? 2 : 1;
     }
 
     function sectionTitle(text) {
@@ -830,7 +830,7 @@
       pdf.rect(cx, y, w, headerRowH, 'FD');
       if (i === 0) { cx += w; return; }
       pdf.setFont('helvetica', 'bold');
-      pdf.setFontSize(7);
+      pdf.setFontSize(9);
       pdf.setTextColor(...ink);
       const lines = headerLabels[i].split('\n');
       const lineHeight = 3.2;
@@ -851,7 +851,7 @@
       row.forEach((text, i) => {
         pdf.rect(cx, y, colW[i], dataRowH, 'D');
         pdf.setFont('helvetica', i === 0 ? 'bold' : 'normal');
-        pdf.setFontSize(8);
+        pdf.setFontSize(9);
         pdf.setTextColor(...ink);
         const align = i === 0 ? 'left' : 'center';
         const tx = i === 0 ? cx + 2 : cx + colW[i] / 2;
