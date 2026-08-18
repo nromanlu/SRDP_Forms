@@ -693,11 +693,11 @@
     }
 
     function hr(thick) {
-      ensureSpace(2);
+      ensureSpace(1);
       pdf.setDrawColor(...(thick ? ink : lightGray));
       pdf.setLineWidth(thick ? 0.6 : 0.3);
       pdf.line(marginX, y, pageW - marginX, y);
-      y += thick ? 4 : 3;
+      y += thick ? 4 : 4;
     }
 
     function sectionTitle(text) {
@@ -706,7 +706,7 @@
       pdf.setFontSize(9.5);
       pdf.setTextColor(...ink);
       pdf.text(text.toUpperCase(), marginX, y);
-      y += 6;
+      y += 5;
     }
 
     function fieldRow(label, value) {
@@ -750,13 +750,13 @@
     pdf.text('Seerettungsdienst Pfäffikon SZ', titleX, y + 14);
 
     if (gemeindeLogo && gemeindeDims) {
-      const boxW = 54, boxH = 18;
+      const boxW = 60, boxH = 18;
       const ratio = Math.min(boxW / gemeindeDims.width, boxH / gemeindeDims.height);
       const w = gemeindeDims.width * ratio, h = gemeindeDims.height * ratio;
       pdf.addImage(gemeindeLogo, imageFormat(gemeindeLogo), pageW - marginX - w, y + 2, w, h);
     }
 
-    y += 22;
+    y += 24;
 
     // ---- Tag 1 / Tag 2 ----
     function dateBlock(label, datumId, vonId, bisId, crewPrefix) {
