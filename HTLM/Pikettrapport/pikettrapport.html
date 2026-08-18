@@ -675,7 +675,6 @@
     const gray = [85, 85, 85];
     const midGray = [102, 102, 102];
     const lightGray = [204, 204, 204];
-    const faintGray = [235, 235, 235];
     const mutedGray = [153, 153, 153];
 
     function ensureSpace(needed) {
@@ -706,16 +705,12 @@
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(9);
       const lines = pdf.splitTextToSize(value, contentW - 50);
-      ensureSpace(lines.length * 4.4 + 3);
+      ensureSpace(lines.length * 4.4 + 2);
       pdf.setTextColor(51, 51, 51);
       pdf.text(label, marginX, y);
       pdf.setTextColor(...ink);
       pdf.text(lines, marginX + 50, y);
-      y += lines.length * 4.4 + 1.5;
-      pdf.setDrawColor(...faintGray);
-      pdf.setLineWidth(0.1);
-      pdf.line(marginX, y, pageW - marginX, y);
-      y += 3;
+      y += lines.length * 4.4 + 2;
     }
 
     // ---- Header ----
@@ -811,7 +806,7 @@
     // ---- Maschinen table ----
     sectionTitle('Maschinen');
     const colW = [40, (contentW - 40) / 3, (contentW - 40) / 3, (contentW - 40) / 3];
-    const headerLabels = ['', 'Löschpumpe (JOHSTADT)', 'Schmutzwasserpumpe (Honda)', 'Stromaggregat (Honda)'];
+    const headerLabels = ['', 'Löschpumpe\n(JOHSTADT)', 'Schmutzwasserpumpe\n(Honda)', 'Stromaggregat\n(Honda)'];
     const rows = [
       ['Allgemeiner Zustand', isChecked('m1-ok') ? 'i.O.' : '-', isChecked('m2-ok') ? 'i.O.' : '-', isChecked('m3-ok') ? 'i.O.' : '-'],
       ['Betriebsdauer', `${val('m1-min') || '0'} min`, `${val('m2-min') || '0'} min`, `${val('m3-min') || '0'} min`],
