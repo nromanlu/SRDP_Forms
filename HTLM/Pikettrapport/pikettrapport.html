@@ -693,11 +693,11 @@
     }
 
     function hr(thick) {
-      ensureSpace(1);
+      ensureSpace(2);
       pdf.setDrawColor(...(thick ? ink : lightGray));
       pdf.setLineWidth(thick ? 0.6 : 0.3);
       pdf.line(marginX, y, pageW - marginX, y);
-      y += thick ? 2 : 1;
+      y += thick ? 5 : 4;
     }
 
     function sectionTitle(text) {
@@ -718,7 +718,7 @@
       pdf.text(label, marginX, y);
       pdf.setTextColor(...ink);
       pdf.text(lines, marginX + 50, y);
-      y += lines.length * 4.4 + 2;
+      y += lines.length * 4.2 + 2;
     }
 
     // ---- Header ----
