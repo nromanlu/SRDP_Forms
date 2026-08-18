@@ -14,12 +14,12 @@ jobs:
       - name: SFTP Deploy
         uses: wlixcc/SFTP-Deploy-Action@v1.2.6
         with:
-          username: ${{ secrets.FTP_USERNAME }}
-          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.SFTP_USERNAME }}
+          server: ${{ secrets.SFTP_SERVER }}
           port: 22
-          password: ${{ secrets.FTP_PASSWORD }}
+          password: ${{ secrets.SFTP_PASSWORD }}
           ssh_private_key: ''
           local_path: './HTLM/*'
           remote_path: '/sites/nr-works.ch/'
-          sftp_only: true
+          sftp_only: false
           rsyncArgs: '-avzr --exclude=*.rtf'
