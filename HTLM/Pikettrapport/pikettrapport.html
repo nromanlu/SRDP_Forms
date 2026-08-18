@@ -781,7 +781,7 @@
       pdf.setFontSize(9);
       pdf.setTextColor(...ink);
       pdf.text(val(bisId) || '-', marginX + 104, y);
-      y += 2;
+      y += 4.2 + 1;
 
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(9);
@@ -842,7 +842,7 @@
       });
       cx += w;
     });
-    y += headerRowH + 1;
+    y += headerRowH + 2;
 
     rows.forEach(row => {
       cx = marginX;
