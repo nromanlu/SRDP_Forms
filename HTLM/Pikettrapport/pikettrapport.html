@@ -218,6 +218,14 @@
     }
 
     /* ---------------------------------------------------- PDF EXPORT ---------------------------------------------------- */
+    /* Reduce margins for PDF/print output */
+    @page { size: A4; margin: 6mm; }
+
+    @media print {
+      body { background: #fff; padding: 0; }
+      .page { margin: 0; max-width: none; box-shadow: none; border: none; padding: 8px; }
+    }
+
     /* Elements with this class are hidden only while html2canvas captures the .page for the PDF */
     .pdf-hide { display: none !important; }
   </style>
@@ -806,7 +814,7 @@
     // ---- Maschinen table ----
     sectionTitle('Maschinen');
     const colW = [40, (contentW - 40) / 3, (contentW - 40) / 3, (contentW - 40) / 3];
-    const headerLabels = ['', 'Löschpumpe\n(JOHSTADT)', 'Schmutzwasserpumpe\n(Honda)', 'Stromaggregat\n(Honda)'];
+    const headerLabels = ['', 'Löschpumpe (JOHSTADT)', 'Schmutzwasserpumpe (Honda)', 'Stromaggregat  (Honda)'];
     const rows = [
       ['Allgemeiner Zustand', isChecked('m1-ok') ? 'i.O.' : '-', isChecked('m2-ok') ? 'i.O.' : '-', isChecked('m3-ok') ? 'i.O.' : '-'],
       ['Betriebsdauer', `${val('m1-min') || '0'} min`, `${val('m2-min') || '0'} min`, `${val('m3-min') || '0'} min`],
