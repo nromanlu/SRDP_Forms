@@ -688,7 +688,7 @@
     function ensureSpace(needed) {
       if (y + needed > bottomLimit) {
         pdf.addPage();
-        y = 5;
+        y = 8;
       }
     }
 
@@ -713,12 +713,12 @@
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(9);
       const lines = pdf.splitTextToSize(value, contentW - 50);
-      ensureSpace(lines.length * 4.4 + 2);
+      ensureSpace(lines.length * 4.2 + 2);
       pdf.setTextColor(51, 51, 51);
       pdf.text(label, marginX, y);
       pdf.setTextColor(...ink);
       pdf.text(lines, marginX + 50, y);
-      y += lines.length * 4.2 + 2;
+      y += lines.length * 4.2 + 1;
     }
 
     // ---- Header ----
@@ -756,7 +756,7 @@
       pdf.addImage(gemeindeLogo, imageFormat(gemeindeLogo), pageW - marginX - w, y + 2, w, h);
     }
 
-    y += 24;
+    y += 25;
 
     // ---- Tag 1 / Tag 2 ----
     function dateBlock(label, datumId, vonId, bisId, crewPrefix) {
@@ -768,14 +768,14 @@
       pdf.setFont('helvetica', 'normal');
       pdf.text(val(datumId) || '-', marginX + 30, y);
 
-      pdf.setFontSize(8);
+      pdf.setFontSize(9);
       pdf.setTextColor(...midGray);
       pdf.text('Von:', marginX + 68, y);
       pdf.setFontSize(9);
       pdf.setTextColor(...ink);
       pdf.text(val(vonId) || '-', marginX + 76, y);
 
-      pdf.setFontSize(8);
+      pdf.setFontSize(9);
       pdf.setTextColor(...midGray);
       pdf.text('Bis:', marginX + 96, y);
       pdf.setFontSize(9);
@@ -893,17 +893,14 @@
 
     // ---- Footer / signature ----
     ensureSpace(16);
-    pdf.setDrawColor(...lightGray);
-    pdf.setLineWidth(0.3);
-    pdf.line(marginX, y, pageW - marginX, y);
-    y += 6;
+    y += 5;
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(9);
     pdf.setTextColor(68, 68, 68);
     pdf.text('Unterschrift Protokollführer/-in:', marginX, y);
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(...ink);
-    pdf.text(val('sig_crew') || '-', marginX + 62, y);
+    pdf.text(val('sig_crew') || '-', marginX + 62, y, { align: 'right' });
     y += 8;
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(7);
