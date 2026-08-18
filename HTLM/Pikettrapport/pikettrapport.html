@@ -693,11 +693,11 @@
     }
 
     function hr(thick) {
-      ensureSpace(3);
+      ensureSpace(2);
       pdf.setDrawColor(...(thick ? ink : lightGray));
       pdf.setLineWidth(thick ? 0.6 : 0.3);
       pdf.line(marginX, y, pageW - marginX, y);
-      y += thick ? 6 : 5;
+      y += thick ? 4 : 3;
     }
 
     function sectionTitle(text) {
@@ -756,8 +756,7 @@
       pdf.addImage(gemeindeLogo, imageFormat(gemeindeLogo), pageW - marginX - w, y + 2, w, h);
     }
 
-    y += 20;
-    //hr(true);
+    y += 22;
 
     // ---- Tag 1 / Tag 2 ----
     function dateBlock(label, datumId, vonId, bisId, crewPrefix) {
@@ -792,7 +791,7 @@
       const crewLines = pdf.splitTextToSize(crewList(crewPrefix) || '-', contentW - 30);
       ensureSpace(crewLines.length * 4.2 + 4);
       pdf.text(crewLines, marginX + 30, y);
-      y += crewLines.length * 4.2 + 4;
+      y += crewLines.length * 4.2 + 2;
     }
 
     dateBlock('Datum Tag 1:', 'datum1', 'von1', 'bis1', 'd1_crew');
@@ -820,7 +819,7 @@
       ['Betriebsdauer', `${val('m1-min') || '0'} min`, `${val('m2-min') || '0'} min`, `${val('m3-min') || '0'} min`],
       ['Treibstoff', `${val('m1-l') || '0'} L`, `${val('m2-l') || '0'} L`, `${val('m3-l') || '0'} L`]
     ];
-    const headerRowH = 11, dataRowH = 7;
+    const headerRowH = 7, dataRowH = 6;
     ensureSpace(headerRowH + dataRowH * rows.length + 4);
 
     let cx = marginX;
