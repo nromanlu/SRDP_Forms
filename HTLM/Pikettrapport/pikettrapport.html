@@ -807,7 +807,7 @@
     fieldRow('Schrauben', engineText('schr-bb', 'schr-stb', 'schr-nok', 'schr-detail'));
     fieldRow('Motorenstunden', `${val('mot-h-bb') || '0'} h Bb   /   ${val('mot-h-stb') || '0'} h Stb (eingerückt)`);
     fieldRow('Treibstoff', `${val('treibstoff') || '0'} Liter Diesel gebunkert`);
-    y += 2;
+    y += 1;
     hr(false);
 
     // ---- Maschinen table ----
@@ -860,21 +860,21 @@
       });
       y += dataRowH;
     });
-    y += 6;
+    y += 1;
     hr(false);
 
     // ---- Material ----
     sectionTitle('Material');
     fieldRow('Ersetzen:', val('mat-ersetzen') || '-');
     fieldRow('Reparieren:', val('mat-reparieren') || '-');
-    y += 2;
+    y += 1;
     hr(false);
 
     // ---- Elektronik ----
     sectionTitle('Elektronik');
     fieldRow('Funkgeräte u.a. mobile Geräte', okNokText('funk', 'funk-detail'));
     fieldRow('Navigationsgeräte', okNokText('navi', 'navi-detail'));
-    y += 2;
+    y += 1;
     hr(false);
 
     // ---- Diverses ----
@@ -889,15 +889,14 @@
     pdf.rect(marginX, y, contentW, boxH, 'D');
     pdf.setTextColor(...ink);
     pdf.text(diversesLines, marginX + 3, y + 6);
-    y += boxH + 8;
+    y += boxH + 5;
 
     // ---- Footer / signature ----
     ensureSpace(16);
-    y += 5;
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(9);
     pdf.setTextColor(68, 68, 68);
-    pdf.text('Unterschrift Protokollführer/-in:', marginX, y);
+    pdf.text('Unterschrift Protokollführer/-in:', marginX, y, { align: 'center' });
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(...ink);
     pdf.text(val('sig_crew') || '-', marginX + 62, y, { align: 'right' });
