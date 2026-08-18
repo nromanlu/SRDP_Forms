@@ -12,14 +12,14 @@ jobs:
         uses: actions/checkout@v5
 
       - name: SFTP Deploy
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        uses: wlixcc/SFTP-Deploy-Action@v1.2.6
         with:
-          server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
+          server: ${{ secrets.FTP_SERVER }}
           port: 22
-          protocol: sftp
-          local-dir: ./HTLM/
-          server-dir: ./
-          exclude: |
-            **/*.rtf
+          password: ${{ secrets.FTP_PASSWORD }}
+          ssh_private_key: ''
+          local_path: './HTLM/*'
+          remote_path: '/sites/nr-works.ch/'
+          sftp_only: true
+          rsyncArgs: '-avzr --exclude=*.rtf'
