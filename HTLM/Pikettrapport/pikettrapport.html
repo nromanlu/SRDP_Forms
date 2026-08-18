@@ -811,7 +811,7 @@
     // ---- Maschinen table ----
     sectionTitle('Maschinen');
     const colW = [40, (contentW - 40) / 3, (contentW - 40) / 3, (contentW - 40) / 3];
-    const headerLabels = ['', 'Löschpumpe\n(JOHSTADT)', 'Schmutzwasserpumpe\n(Honda)', 'Stromaggregat\n(Honda)'];
+    const headerLabels = ['', 'Löschpumpe (JOHSTADT)', 'Schmutzwasserpumpe (Honda)', 'Stromaggregat (Honda)'];
     const rows = [
       ['Allgemeiner Zustand', isChecked('m1-ok') ? 'i.O.' : '-', isChecked('m2-ok') ? 'i.O.' : '-', isChecked('m3-ok') ? 'i.O.' : '-'],
       ['Betriebsdauer', `${val('m1-min') || '0'} min`, `${val('m2-min') || '0'} min`, `${val('m3-min') || '0'} min`],
