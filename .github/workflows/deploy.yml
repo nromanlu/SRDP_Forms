@@ -20,6 +20,6 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           ssh_private_key: ''
           local_path: './HTLM/*'
-          remote_path: '/'
+          remote_path: '/sites/nr-works.ch/'
           sftp_only: true
           rsyncArgs: '-avzr --exclude=*.rtf'
