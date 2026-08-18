@@ -896,7 +896,7 @@
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(9);
     pdf.setTextColor(68, 68, 68);
-    pdf.text('Unterschrift Protokollführer/-in:', marginX, y, { align: 'center' });
+    pdf.text('Unterschrift Protokollführer/-in:', marginX, y, { align: 'right' });
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(...ink);
     pdf.text(val('sig_crew') || '-', marginX + 62, y, { align: 'right' });
