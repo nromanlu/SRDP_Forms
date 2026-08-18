@@ -893,13 +893,20 @@
 
     // ---- Footer / signature ----
     ensureSpace(16);
-    pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(9);
+    const sigLabel = 'Unterschrift Protokollführer/-in: ';
+    const sigName = val('sig_crew') || '-';
+    pdf.setFont('helvetica', 'normal');
+    const sigLabelWidth = pdf.getTextWidth(sigLabel);
+    pdf.setFont('helvetica', 'bold');
+    const sigNameWidth = pdf.getTextWidth(sigName);
+    const sigStartX = (pageW - marginX) - (sigLabelWidth + sigNameWidth);
+    pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(68, 68, 68);
-    pdf.text('Unterschrift Protokollführer/-in:', marginX, y, { align: 'right' });
+    pdf.text(sigLabel, sigStartX, y);
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(...ink);
-    pdf.text(val('sig_crew') || '-', marginX + 62, y, { align: 'right' });
+    pdf.text(sigName, sigStartX + sigLabelWidth, y);
     y += 8;
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(7);
