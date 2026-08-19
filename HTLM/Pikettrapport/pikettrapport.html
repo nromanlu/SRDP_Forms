@@ -205,6 +205,8 @@
     .btn-reset:hover { opacity: .85; }
     .btn-submit { background: #2a7a2a; color: #fff; }
     .btn-submit:hover { opacity: .88; }
+    .btn-download { background: #6b6b6b; color: #fff; }
+    .btn-download:hover { opacity: .85; }
     .btn:disabled { opacity: .6; cursor: default; }
     .sig-row { display: flex; align-items: center; gap: 8px; flex: 1; }
     .sig-row label { white-space: nowrap; font-size: 10.5px; color: #444; }
@@ -481,6 +483,7 @@
   <div class="footer">
     <button class="btn btn-reset" onclick="resetForm()">Zurücksetzen</button>
     <button class="btn btn-submit" id="submitBtn" onclick="submitForm()">Absenden</button>
+    <button class="btn btn-download" id="downloadBtn" onclick="downloadPDF()">PDF herunterladen</button>
     <div class="sig-row">
       <label for="sig_crew">Unterschrift Protokollführer/-in:</label>
       <select id="sig_crew" style="flex:1">
@@ -499,11 +502,25 @@
 <script>
  /* ==================================================== SCRIPTS ==================================================== */
  /* ---------------------------------------------------- CrewNames ---------------------------------------------------- */
-  const CrewNames = ['Patrick Binda', 'Christoph Fretz', 'Diana Gisi', 'André Guggisberg', 'Andreas Gygax', 
-  'Peter Hasler', 'Lukas Kälin', 'Marcel Künzler', 'Tanja Marty', 'Andreas Mollet', 
-  'Marvin Nauer', 'Alexander Reinfrank', 'Nicolás Román L.', 'Jan Rosemeyer', 'Michael Staub', 'David Steiner', 
-  'Thomas Stöcklin', 'Stefan Tasić', 'Andreas Tobler', 'Franco Tuscano', 'Christina Vauk', 'Massimo Zuliani', 
-  'Markus Züger'];
+  // Die Crew-Liste lebt neu in einer eigenen Datei (../Crew/crew.html, ein
+  // Ordner neben Pikettrapport), damit sie unabhängig vom restlichen Formular
+  // gepflegt werden kann. Diese Funktion lädt die Datei per fetch() und liest
+  // die Namen aus den <li>-Einträgen aus.
+  let CrewNames = [];
+
+  async function loadCrewNames() {
+    try {
+      const res = await fetch('../Crew/crew.html');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const html = await res.text();
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const items = doc.querySelectorAll('#crew-list li');
+      CrewNames = Array.from(items).map(li => li.textContent.trim()).filter(Boolean);
+    } catch (e) {
+      console.error('Crew-Liste (../Crew/crew.html) konnte nicht geladen werden:', e);
+      CrewNames = [];
+    }
+  }
 
   function populateCrewSelect(selectId) {
     const select = document.getElementById(selectId);
@@ -516,18 +533,6 @@
     });
   }
 
-   populateCrewSelect('d1_crew_a');
-   populateCrewSelect('d1_crew_b');
-   populateCrewSelect('d1_crew_c');
-   populateCrewSelect('d1_crew_d');
-
-   populateCrewSelect('d2_crew_a');
-   populateCrewSelect('d2_crew_b');
-   populateCrewSelect('d2_crew_c');
-   populateCrewSelect('d2_crew_d');
-
-    populateCrewSelect('sig_crew');
-
   function updateSelectPlaceholderState(select) {
     select.classList.toggle('placeholder', select.value === '');
   }
@@ -539,14 +544,19 @@
     select.addEventListener('change', () => updateSelectPlaceholderState(select));
   }
 
-  wireSelectPlaceholder('d1_crew_a');
-  wireSelectPlaceholder('d1_crew_b');
-  wireSelectPlaceholder('d1_crew_c');
-  wireSelectPlaceholder('d1_crew_d');
-  wireSelectPlaceholder('d2_crew_a');
-  wireSelectPlaceholder('d2_crew_b');
-  wireSelectPlaceholder('d2_crew_c');
-  wireSelectPlaceholder('sig_crew');
+  const CREW_SELECT_IDS = [
+    'd1_crew_a', 'd1_crew_b', 'd1_crew_c', 'd1_crew_d',
+    'd2_crew_a', 'd2_crew_b', 'd2_crew_c', 'd2_crew_d',
+    'sig_crew'
+  ];
+
+  (async function initCrewSelects() {
+    await loadCrewNames();
+    CREW_SELECT_IDS.forEach(id => {
+      populateCrewSelect(id);
+      wireSelectPlaceholder(id);
+    });
+  })();
 
    /* ---------------------------------------------------- Biene III ---------------------------------------------------- */
   // Show text field when "Nicht i.O." / "Defekt" is selected
@@ -946,10 +956,12 @@
 
     const submitBtn = document.getElementById('submitBtn');
     const resetBtn = document.querySelector('.btn-reset');
+    const downloadBtn = document.getElementById('downloadBtn');
     const originalLabel = submitBtn.textContent;
     submitBtn.textContent = 'PDF wird erstellt…';
     submitBtn.disabled = true;
     resetBtn.disabled = true;
+    downloadBtn.disabled = true;
 
     try {
       const pdf = await generatePDF();
@@ -995,6 +1007,42 @@
       alert('Beim Senden des Pikettrapports ist ein Fehler aufgetreten:\n\n' + detail);
     } finally {
       submitBtn.textContent = originalLabel;
+      submitBtn.disabled = false;
+      resetBtn.disabled = false;
+      downloadBtn.disabled = false;
+    }
+  }
+
+  /* ---------------------------------------------------- PDF DOWNLOAD (LOKAL, OHNE VERSAND) ---------------------------------------------------- */
+  // Erstellt dasselbe PDF wie "Absenden", speichert es aber direkt im Browser
+  // des Geräts ab, statt es per send-report.php per Mail zu verschicken.
+  async function downloadPDF() {
+    const sig = document.getElementById('sig_crew').value.trim();
+    if (!sig) {
+      alert('Bitte Unterschrift eintragen.');
+      return;
+    }
+
+    const submitBtn = document.getElementById('submitBtn');
+    const resetBtn = document.querySelector('.btn-reset');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const originalLabel = downloadBtn.textContent;
+    downloadBtn.textContent = 'PDF wird erstellt…';
+    downloadBtn.disabled = true;
+    submitBtn.disabled = true;
+    resetBtn.disabled = true;
+
+    try {
+      const pdf = await generatePDF();
+      const filename = buildFilename();
+      pdf.save(filename);
+    } catch (err) {
+      console.error(err);
+      const detail = (err && err.message) ? err.message : String(err);
+      alert('Beim Erstellen des PDF ist ein Fehler aufgetreten:\n\n' + detail);
+    } finally {
+      downloadBtn.textContent = originalLabel;
+      downloadBtn.disabled = false;
       submitBtn.disabled = false;
       resetBtn.disabled = false;
     }
