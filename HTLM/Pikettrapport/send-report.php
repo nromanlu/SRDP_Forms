@@ -6,6 +6,12 @@
  * to the fixed recipient below, with the PDF as an attachment. No mail app opens
  * on the device — the message is sent directly from the server.
  *
+ * The email body also contains a "Rapport bearbeiten" link. That link carries
+ * the entire filled-in form (as a base64-encoded fragment in the URL, built by
+ * buildEditUrl() in pikettrapport.html) so that opening it re-fills the form,
+ * e.g. to fix a typo, without needing to type everything again. The link is
+ * NOT included in the PDF itself — only in the email body.
+ *
  * Deploy this file in the SAME folder as pikettrapport.html so the relative
  * fetch('send-report.php') call in the form finds it. It ships through the
  * existing GitHub Actions FTP pipeline automatically, just like the HTML file.
@@ -24,6 +30,9 @@ $RECIPIENT   = 'n.romanlu@gmail.com';
 $FROM_ADDR   = 'noreply@nr-works.ch';
 $FROM_NAME   = 'Pikettrapport SRDP';
 $MAX_PDF_MB  = 10;
+// Edit links only make sense if they point back at nr-works.ch. Anything else
+// (e.g. a manipulated value) is dropped rather than emailed out.
+$ALLOWED_EDIT_URL_HOSTS = ['nr-works.ch', 'www.nr-works.ch'];
 
 // ---------------------------------------------------------------------------
 function respond($success, $error = null, $httpCode = 200) {
@@ -67,27 +76,80 @@ if (substr(strtolower($attachmentName), -4) !== '.pdf') {
 }
 
 // ---------------------------------------------------------------------------
-// Build a multipart/mixed MIME email with the PDF as a base64 attachment.
+// Edit link ("Rapport bearbeiten") — validate before using it anywhere.
 // ---------------------------------------------------------------------------
-$boundary = md5(uniqid((string) microtime(true), true));
+$editUrl = isset($_POST['editUrl']) ? trim($_POST['editUrl']) : '';
+$editUrl = preg_replace('/[\r\n]+/', '', $editUrl); // strip any injected line breaks
+
+if ($editUrl !== '') {
+    $parts = parse_url($editUrl);
+    $isHttps   = isset($parts['scheme']) && $parts['scheme'] === 'https';
+    $hostOk    = isset($parts['host']) && in_array(strtolower($parts['host']), $ALLOWED_EDIT_URL_HOSTS, true);
+    if (!$isHttps || !$hostOk) {
+        // Don't fail the whole request over this — just omit the link.
+        $editUrl = '';
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Build the email:
+//   multipart/mixed
+//     ├─ multipart/alternative
+//     │    ├─ text/plain  (body + edit link as a plain URL)
+//     │    └─ text/html   (body + edit link as a clickable <a>)
+//     └─ application/pdf  (the report, unchanged)
+// ---------------------------------------------------------------------------
+$mixedBoundary = md5(uniqid((string) microtime(true), true));
+$altBoundary   = md5(uniqid((string) microtime(true) . 'alt', true));
 
 $headers  = "From: {$FROM_NAME} <{$FROM_ADDR}>\r\n";
 $headers .= "Reply-To: {$FROM_ADDR}\r\n";
 $headers .= "MIME-Version: 1.0\r\n";
-$headers .= "Content-Type: multipart/mixed; boundary=\"{$boundary}\"\r\n";
+$headers .= "Content-Type: multipart/mixed; boundary=\"{$mixedBoundary}\"\r\n";
 
-$message  = "--{$boundary}\r\n";
-$message .= "Content-Type: text/plain; charset=UTF-8\r\n";
-$message .= "Content-Transfer-Encoding: 8bit\r\n\r\n";
-$message .= $bodyText . "\r\n\r\n";
+// --- plain text body ---
+$plainBody = $bodyText;
+if ($editUrl !== '') {
+    $plainBody .= "\r\n\r\nRapport bearbeiten (z.B. bei einem Tippfehler):\r\n{$editUrl}";
+}
 
-$message .= "--{$boundary}\r\n";
-$message .= "Content-Type: application/pdf; name=\"{$attachmentName}\"\r\n";
-$message .= "Content-Transfer-Encoding: base64\r\n";
-$message .= "Content-Disposition: attachment; filename=\"{$attachmentName}\"\r\n\r\n";
-$message .= chunk_split(base64_encode($pdfData)) . "\r\n";
+// --- html body ---
+$htmlBodyText = nl2br(htmlspecialchars($bodyText, ENT_QUOTES, 'UTF-8'));
+$htmlBody  = "<div style=\"font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1a1a1a;\">";
+$htmlBody .= "<p>{$htmlBodyText}</p>";
+if ($editUrl !== '') {
+    $safeEditUrl = htmlspecialchars($editUrl, ENT_QUOTES, 'UTF-8');
+    $htmlBody .= "<p style=\"margin-top:18px;\">";
+    $htmlBody .= "<a href=\"{$safeEditUrl}\" style=\"display:inline-block;padding:8px 16px;background:#1a4fa0;color:#ffffff;text-decoration:none;border-radius:4px;\">Rapport bearbeiten</a>";
+    $htmlBody .= "</p>";
+    $htmlBody .= "<p style=\"font-size:11px;color:#777;margin-top:6px;\">Falls der Button nicht funktioniert, diesen Link öffnen:<br>{$safeEditUrl}</p>";
+}
+$htmlBody .= "</div>";
 
-$message .= "--{$boundary}--";
+// --- assemble multipart/alternative ---
+$alternative  = "--{$mixedBoundary}\r\n";
+$alternative .= "Content-Type: multipart/alternative; boundary=\"{$altBoundary}\"\r\n\r\n";
+
+$alternative .= "--{$altBoundary}\r\n";
+$alternative .= "Content-Type: text/plain; charset=UTF-8\r\n";
+$alternative .= "Content-Transfer-Encoding: 8bit\r\n\r\n";
+$alternative .= $plainBody . "\r\n\r\n";
+
+$alternative .= "--{$altBoundary}\r\n";
+$alternative .= "Content-Type: text/html; charset=UTF-8\r\n";
+$alternative .= "Content-Transfer-Encoding: 8bit\r\n\r\n";
+$alternative .= $htmlBody . "\r\n\r\n";
+
+$alternative .= "--{$altBoundary}--\r\n";
+
+// --- PDF attachment (unchanged, no edit link inside it) ---
+$attachment  = "--{$mixedBoundary}\r\n";
+$attachment .= "Content-Type: application/pdf; name=\"{$attachmentName}\"\r\n";
+$attachment .= "Content-Transfer-Encoding: base64\r\n";
+$attachment .= "Content-Disposition: attachment; filename=\"{$attachmentName}\"\r\n\r\n";
+$attachment .= chunk_split(base64_encode($pdfData)) . "\r\n";
+
+$message = $alternative . $attachment . "--{$mixedBoundary}--";
 
 // RFC 2047 encode the subject so umlauts (ä/ö/ü) render correctly in the recipient's inbox.
 $encodedSubject = '=?UTF-8?B?' . base64_encode($subject) . '?=';

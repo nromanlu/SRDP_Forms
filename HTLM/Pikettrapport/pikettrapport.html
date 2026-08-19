@@ -492,7 +492,7 @@
     </div>
   </div>
 
-  <div class="version-note">Pikettrapport V5.1 / srdp.ch</div>
+  <div class="version-note">Pikettrapport V5.2 / srdp.ch</div>
 
 </div>
 
@@ -556,6 +556,13 @@
       populateCrewSelect(id);
       wireSelectPlaceholder(id);
     });
+
+    // Nach dem Befuellen der Crew-Dropdowns pruefen, ob die Seite ueber einen
+    // "Rapport bearbeiten"-Link mit angehaengten Formulardaten geoeffnet wurde
+    // (siehe applyEditLinkIfPresent weiter unten). Muss NACH dem Befuellen der
+    // <select>-Optionen laufen, sonst gibt es die Crew-Namen als Option noch
+    // nicht und der Wert kann nicht gesetzt werden.
+    applyEditLinkIfPresent();
   })();
 
    /* ---------------------------------------------------- Biene III ---------------------------------------------------- */
@@ -599,6 +606,87 @@
       });
       document.querySelectorAll('.defekt-input').forEach(el => el.classList.remove('visible'));
     }
+  }
+
+  /* ---------------------------------------------------- BEARBEITEN-LINK (Formulardaten in URL) ---------------------------------------------------- */
+  // Beim Absenden werden alle eingegebenen Werte in ein JSON-Objekt gepackt,
+  // base64-kodiert und als #data=... an die eigene URL angehaengt. Dieser Link
+  // wird per E-Mail mitgeschickt (nicht im PDF). Wird er geoeffnet, liest
+  // applyEditLinkIfPresent() den Hash aus und befuellt das Formular erneut,
+  // damit z.B. ein Tippfehler korrigiert werden kann, ohne alles neu einzutippen.
+
+  function serializeForm() {
+    const data = { fields: {}, checks: {}, radios: {} };
+
+    document.querySelectorAll('.page input[type="text"], .page input[type="number"], .page textarea, .page select')
+      .forEach(el => { if (el.id) data.fields[el.id] = el.value; });
+
+    document.querySelectorAll('.page input[type="checkbox"]')
+      .forEach(el => { if (el.id) data.checks[el.id] = el.checked; });
+
+    const radioNames = new Set();
+    document.querySelectorAll('.page input[type="radio"]').forEach(el => radioNames.add(el.name));
+    radioNames.forEach(name => {
+      const checked = document.querySelector(`input[name="${name}"]:checked`);
+      data.radios[name] = checked ? checked.value : null;
+    });
+
+    return data;
+  }
+
+  function fillForm(data) {
+    if (!data) return;
+
+    Object.entries(data.fields || {}).forEach(([id, v]) => {
+      const el = document.getElementById(id);
+      if (el) el.value = v;
+    });
+
+    Object.entries(data.checks || {}).forEach(([id, c]) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.checked = !!c;
+        el.dispatchEvent(new Event('change'));
+      }
+    });
+
+    Object.entries(data.radios || {}).forEach(([name, v]) => {
+      if (!v) return;
+      const el = document.querySelector(`input[name="${name}"][value="${v}"]`);
+      if (el) {
+        el.checked = true;
+        el.dispatchEvent(new Event('change'));
+      }
+    });
+
+    document.querySelectorAll('select[id]').forEach(s => {
+      if (typeof updateSelectPlaceholderState === 'function') updateSelectPlaceholderState(s);
+    });
+  }
+
+  function encodeFormData(data) {
+    return btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+  }
+
+  function decodeFormData(str) {
+    try {
+      return JSON.parse(decodeURIComponent(escape(atob(str))));
+    } catch (e) {
+      console.error('Bearbeiten-Link konnte nicht gelesen werden:', e);
+      return null;
+    }
+  }
+
+  function buildEditUrl() {
+    const encoded = encodeFormData(serializeForm());
+    return window.location.origin + window.location.pathname + '#data=' + encoded;
+  }
+
+  function applyEditLinkIfPresent() {
+    if (!location.hash.startsWith('#data=')) return;
+    const encoded = location.hash.slice('#data='.length);
+    const data = decodeFormData(encoded);
+    if (data) fillForm(data);
   }
 
   /* ---------------------------------------------------- PDF GENERATION (VECTOR) ---------------------------------------------------- */
@@ -936,7 +1024,7 @@
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(7);
     pdf.setTextColor(...mutedGray);
-    pdf.text('Pikettrapport V5.1 / srdp.ch', pageW - marginX, y, { align: 'right' });
+    pdf.text('Pikettrapport V5.2 / srdp.ch', pageW - marginX, y, { align: 'right' });
 
     return pdf;
   }
@@ -973,6 +1061,11 @@
         'Im Anhang der ausgefüllte Pikettrapport.\n\n' +
         `Unterschrift Protokollführer/-in: ${sig}`;
 
+      // Link, der das Formular mit allen aktuell eingegebenen Werten wieder
+      // oeffnet (siehe buildEditUrl / applyEditLinkIfPresent oben). Wird nur
+      // in die E-Mail gepackt, NICHT ins PDF.
+      const editUrl = buildEditUrl();
+
       const pdfBlob = pdf.output('blob');
 
       submitBtn.textContent = 'Wird gesendet…';
@@ -982,6 +1075,7 @@
       formData.append('subject', subject);
       formData.append('body', bodyText);
       formData.append('filename', filename);
+      formData.append('editUrl', editUrl);
 
       const response = await fetch('send-report.php', {
         method: 'POST',
