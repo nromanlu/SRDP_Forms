@@ -130,15 +130,22 @@ $htmlBody .= "</div>";
 $alternative  = "--{$mixedBoundary}\r\n";
 $alternative .= "Content-Type: multipart/alternative; boundary=\"{$altBoundary}\"\r\n\r\n";
 
+// Quoted-printable (not 8bit) is important here: the edit link can push a
+// single line (e.g. the href="...") well past ~1000 characters. Some MTAs
+// hard-wrap long 8bit lines in transit by inserting a stray line break /
+// space wherever the limit is hit, which silently corrupts the base64 data
+// in the middle of the link. Quoted-printable encodes long lines with
+// explicit "=\r\n" soft breaks that mail clients reassemble correctly, so
+// the link (and the rest of the body) always arrives intact.
 $alternative .= "--{$altBoundary}\r\n";
 $alternative .= "Content-Type: text/plain; charset=UTF-8\r\n";
-$alternative .= "Content-Transfer-Encoding: 8bit\r\n\r\n";
-$alternative .= $plainBody . "\r\n\r\n";
+$alternative .= "Content-Transfer-Encoding: quoted-printable\r\n\r\n";
+$alternative .= quoted_printable_encode($plainBody) . "\r\n\r\n";
 
 $alternative .= "--{$altBoundary}\r\n";
 $alternative .= "Content-Type: text/html; charset=UTF-8\r\n";
-$alternative .= "Content-Transfer-Encoding: 8bit\r\n\r\n";
-$alternative .= $htmlBody . "\r\n\r\n";
+$alternative .= "Content-Transfer-Encoding: quoted-printable\r\n\r\n";
+$alternative .= quoted_printable_encode($htmlBody) . "\r\n\r\n";
 
 $alternative .= "--{$altBoundary}--\r\n";
 
