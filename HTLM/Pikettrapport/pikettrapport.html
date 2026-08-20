@@ -1038,11 +1038,18 @@
     pdf.setFont('LiberationSans', 'bold');
     pdf.setTextColor(...ink);
     pdf.text(sigName, sigStartX + sigLabelWidth, y);
-    y += 8;
-    pdf.setFont('LiberationSans', 'normal');
-    pdf.setFontSize(7);
-    pdf.setTextColor(...mutedGray);
-    pdf.text('Pikettrapport V5.2 / srdp.ch', pageW - marginX, y, { align: 'right' });
+
+    // ---- Version footnote (bottom-right of every page) ----
+    const footerNote = 'Pikettrapport V5.2 / srdp.ch';
+    const totalPages = pdf.internal.getNumberOfPages();
+    for (let p = 1; p <= totalPages; p++) {
+      pdf.setPage(p);
+      pdf.setFont('LiberationSans', 'normal');
+      pdf.setFontSize(7);
+      pdf.setTextColor(...mutedGray);
+      pdf.text(footerNote, pageW - marginX, pageH - 3, { align: 'right' });
+    }
+    pdf.setPage(totalPages);
 
     return pdf;
   }
