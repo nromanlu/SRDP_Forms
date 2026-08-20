@@ -86,16 +86,29 @@
     }
     .date-row label { font-weight: 700; min-width: 88px; }
     .date-row input[type="text"] { width: 130px; }
+    .date-times { display: flex; align-items: center; gap: 8px; }
     .date-row .time-group { display: flex; align-items: center; gap: 4px; }
     .date-row .time-group span { font-size: 10px; color: #666; }
     .mannschaft-row {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: 8px;
       margin-bottom: 2px;
     }
-    .mannschaft-row label { min-width: 88px; color: #444; }
-    .mannschaft-row input, .mannschaft-row select { flex: 1; }
+    .mannschaft-row label { min-width: 88px; color: #444; padding-top: 4px; }
+    .crew-controls {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px 8px;
+      flex: 1;
+    }
+    .crew-controls select,
+    .crew-controls input { width: 100%; }
+    .crew-controls .crew-select:nth-child(1) { grid-column: 1; grid-row: 1; }
+    .crew-controls .crew-select:nth-child(2) { grid-column: 2; grid-row: 1; }
+    .crew-controls .crew-select:nth-child(3) { grid-column: 3; grid-row: 1; }
+    .crew-controls .crew-select:nth-child(4) { grid-column: 1; grid-row: 2; }
+    .crew-controls .crew-manual { grid-column: 2 / span 2; grid-row: 2; }
 
     /* ---------------------------------------------------- GENERIC INPUTS ---------------------------------------------------- */
     input[type="text"],
@@ -157,19 +170,34 @@
     .engine-row .field-control { gap: 5px; }
     .inline-label { font-size: 10px; color: #555; margin-left: 2px; }
 
-    /* ---------------------------------------------------- MASCHINEN TABLE ---------------------------------------------------- */
-    .maschinen-table { width: 100%; border-collapse: collapse; margin-top: 4px; }
-    .maschinen-table th {
+    /* ---------------------------------------------------- MASCHINEN GRID ---------------------------------------------------- */
+    /* Built as a CSS grid (not a <table>) so mobile can regroup the exact same
+       elements into one card per machine - see .maschinen-card in the mobile
+       block below. Desktop uses grid-column/row (set inline per cell) to lay
+       it out identically to the original table: a shared row-label column on
+       the left, one column per machine. */
+    .maschinen-grid {
+      display: grid;
+      grid-template-columns: 150px repeat(3, 1fr);
+      margin-top: 4px;
+    }
+    .maschinen-card { display: contents; }
+    .maschinen-corner,
+    .maschinen-card-title {
       font-weight: 700; font-size: 10px; text-align: center;
       padding: 4px 6px; background: #f0f0ec; border: 1px solid #ccc;
     }
-    .maschinen-table th:first-child { text-align: left; width: 150px; }
-    .maschinen-table td {
-      padding: 4px 6px; border: 1px solid #ddd; font-size: 10.5px; text-align: center; vertical-align: middle;
+    .maschinen-row-label {
+      display: flex; align-items: center;
+      padding: 4px 6px; border: 1px solid #ddd; font-size: 10.5px;
+      text-align: left; font-weight: 600;
     }
-    .maschinen-table td:first-child { text-align: left; font-weight: 600; }
-    .maschinen-table input[type="number"] { width: 70px; }
-    .maschinen-table .check-center { display: flex; justify-content: center; }
+    .maschinen-field {
+      display: flex; align-items: center; justify-content: center;
+      padding: 4px 6px; border: 1px solid #ddd; font-size: 10.5px; text-align: center;
+    }
+    .maschinen-field input[type="number"] { width: 70px; }
+    .maschinen-field .check-center { display: flex; justify-content: center; width: 100%; }
 
     /* ---------------------------------------------------- DIVERSES TEXTAREA ---------------------------------------------------- */
     .diverses-area {
@@ -208,6 +236,7 @@
     .btn-download { background: #6b6b6b; color: #fff; }
     .btn-download:hover { opacity: .85; }
     .btn:disabled { opacity: .6; cursor: default; }
+    .footer-buttons { display: flex; align-items: center; gap: 12px; }
     .sig-row { display: flex; align-items: center; gap: 8px; flex: 1; }
     .sig-row label { white-space: nowrap; font-size: 10.5px; color: #444; }
     .sig-row input { flex: 1; }
@@ -217,6 +246,77 @@
       font-size: 9px;
       color: #999;
       margin-top: 8px;
+    }
+
+    /* ---------------------------------------------------- MOBILE / IPHONE ---------------------------------------------------- */
+    /* iPad (>=744px in portrait) is the primary target and keeps the default layout above.
+       These overrides only kick in on phone-width screens. */
+    @media (max-width: 600px) {
+      /* Hide the municipality badge in the header - too cramped to read at this width */
+      .header-badge { display: none; }
+
+      /* Von/Bis time fields wrap onto their own line below the date instead of
+         squeezing onto the same row. The alignment spacers only made sense when
+         everything shared one line, so they're dropped here. */
+      .date-row { flex-wrap: wrap; }
+      .date-times { flex-basis: 100%; margin-top: 4px; margin-left: 96px; }
+      .date-spacer { display: none; }
+
+      /* Mannschaft: label on its own line, crew dropdowns get the full row width below it
+         instead of being squeezed next to the label. */
+      .mannschaft-row { flex-direction: column; align-items: stretch; gap: 4px; }
+      .mannschaft-row label { min-width: 0; padding-top: 0; }
+
+      /* Crew dropdowns: 2x2 grid, manual-entry field as its own full-width 3rd line */
+      .crew-controls { grid-template-columns: repeat(2, 1fr); }
+      .crew-controls .crew-select:nth-child(1) { grid-column: 1; grid-row: 1; }
+      .crew-controls .crew-select:nth-child(2) { grid-column: 2; grid-row: 1; }
+      .crew-controls .crew-select:nth-child(3) { grid-column: 1; grid-row: 2; }
+      .crew-controls .crew-select:nth-child(4) { grid-column: 2; grid-row: 2; }
+      .crew-controls .crew-manual { grid-column: 1 / span 2; grid-row: 3; }
+
+      /* Maschinen: one card per machine instead of a 4-column table (which either
+         gets illegibly cramped or needs horizontal scrolling on a phone). The
+         .maschinen-card divs are `display: contents` on desktop (see base CSS
+         above), which is what lets them slot invisibly into the table-like grid;
+         switching them to `display: block` here is what turns each one into a
+         real bordered card with its title and three fields stacked inside. */
+      .maschinen-grid { display: block; }
+      .maschinen-corner, .maschinen-row-label { display: none; }
+      .maschinen-card {
+        display: block;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        margin-bottom: 8px;
+        overflow: hidden;
+      }
+      .maschinen-card:last-child { margin-bottom: 0; }
+      .maschinen-card-title {
+        text-align: left;
+        padding: 6px 8px;
+        border-bottom: 1px solid #ccc;
+      }
+      .maschinen-field {
+        justify-content: space-between;
+        border: none;
+        border-bottom: 1px solid #ebebeb;
+        padding: 6px 8px;
+        text-align: left;
+      }
+      .maschinen-field:last-child { border-bottom: none; }
+      .maschinen-field::before {
+        content: attr(data-label);
+        font-weight: 600;
+        font-size: 10px;
+        color: #666;
+        margin-right: 8px;
+      }
+      .maschinen-field .check-center { justify-content: flex-end; width: auto; }
+
+      /* Footer: signature line above the button row instead of wrapping into it */
+      .footer { flex-direction: column; align-items: stretch; gap: 8px; }
+      .sig-row { order: -1; }
+      .footer-buttons { justify-content: center; flex-wrap: wrap; }
     }
 
     /* ---------------------------------------------------- PDF EXPORT ---------------------------------------------------- */
@@ -256,29 +356,30 @@
     <div class="date-row">
       <label>Datum Tag 1:</label>
       <input type="text" id="datum1" placeholder="TT.MM.JJJJ" style="width:90px">
-      <div style="width:90px"></div>
-      <div class="time-group"><span>Von:</span> <input type="text" id="von1" style="width:55px" placeholder="hh:mm"></div>
-      <div style="width:15px"></div>
-      <div class="time-group"><span>Bis:</span> <input type="text" id="bis1" style="width:55px" placeholder="hh:mm"></div>
+      <div class="date-times">
+        <div class="date-spacer" style="width:90px"></div>
+        <div class="time-group"><span>Von:</span> <input type="text" id="von1" style="width:55px" placeholder="hh:mm"></div>
+        <div class="date-spacer" style="width:15px"></div>
+        <div class="time-group"><span>Bis:</span> <input type="text" id="bis1" style="width:55px" placeholder="hh:mm"></div>
+      </div>
     </div>
     <div class="mannschaft-row">
       <label>Mannschaft:</label>
-      <select id="d1_crew_a" style="flex:1">
-        <option value="">Crew hinzufügen</option>
-      </select>
-      <select id="d1_crew_b" style="flex:1">
-        <option value="">Crew hinzufügen</option>
-      </select>
-      <select id="d1_crew_c" style="flex:1">
-        <option value="">Crew hinzufügen</option>
-      </select>
-    </div>
-    <div class="mannschaft-row">
-      <label></label>
-            <select id="d1_crew_d" style="flex:1">
-        <option value="">Crew hinzufügen</option>
-      </select>
-      <input type="text" id="d1_crew_e" placeholder="Crew hinzfügen" style="flex:2">
+      <div class="crew-controls">
+        <select id="d1_crew_a" class="crew-select">
+          <option value="">Crew hinzufügen</option>
+        </select>
+        <select id="d1_crew_b" class="crew-select">
+          <option value="">Crew hinzufügen</option>
+        </select>
+        <select id="d1_crew_c" class="crew-select">
+          <option value="">Crew hinzufügen</option>
+        </select>
+        <select id="d1_crew_d" class="crew-select">
+          <option value="">Crew hinzufügen</option>
+        </select>
+        <input type="text" id="d1_crew_e" class="crew-manual" placeholder="Crew hinzfügen">
+      </div>
     </div>
   </div>
 
@@ -287,29 +388,30 @@
     <div class="date-row">
       <label>Datum Tag 2:</label>
       <input type="text" id="datum2" placeholder="TT.MM.JJJJ" style="width:90px">
-      <div style="width:90px"></div>
-      <div class="time-group"><span>Von:</span> <input type="text" id="von2" style="width:55px" placeholder="hh:mm"></div>
-      <div style="width:15px"></div>
-      <div class="time-group"><span>Bis:</span> <input type="text" id="bis2" style="width:55px" placeholder="hh:mm"></div>
+      <div class="date-times">
+        <div class="date-spacer" style="width:90px"></div>
+        <div class="time-group"><span>Von:</span> <input type="text" id="von2" style="width:55px" placeholder="hh:mm"></div>
+        <div class="date-spacer" style="width:15px"></div>
+        <div class="time-group"><span>Bis:</span> <input type="text" id="bis2" style="width:55px" placeholder="hh:mm"></div>
+      </div>
     </div>
     <div class="mannschaft-row">
       <label>Mannschaft:</label>
-      <select id="d2_crew_a" style="flex:1">
-        <option value="">Crew hinzufügen</option>
-      </select>
-      <select id="d2_crew_b" style="flex:1">
-        <option value="">Crew hinzufügen</option>
-      </select>
-      <select id="d2_crew_c" style="flex:1">
-        <option value="">Crew hinzufügen</option>
-      </select>
-    </div>
-    <div class="mannschaft-row">
-      <label></label>
-      <select id="d2_crew_d" style="flex:1">
-        <option value="">Crew hinzufügen</option>
-      </select>
-      <input type="text" id="d2_crew_e" placeholder="Crew hinzufügen" style="flex:2">
+      <div class="crew-controls">
+        <select id="d2_crew_a" class="crew-select">
+          <option value="">Crew hinzufügen</option>
+        </select>
+        <select id="d2_crew_b" class="crew-select">
+          <option value="">Crew hinzufügen</option>
+        </select>
+        <select id="d2_crew_c" class="crew-select">
+          <option value="">Crew hinzufügen</option>
+        </select>
+        <select id="d2_crew_d" class="crew-select">
+          <option value="">Crew hinzufügen</option>
+        </select>
+        <input type="text" id="d2_crew_e" class="crew-manual" placeholder="Crew hinzufügen">
+      </div>
     </div>
   </div>
 
@@ -400,36 +502,51 @@
 
   <!-- MASCHINEN -->
   <div class="section-title">Maschinen</div>
-  <table class="maschinen-table">
-    <thead>
-      <tr>
-        <th></th>
-        <th>Löschpumpe (JOHSTADT)</th>
-        <th>Schmutzwasserpumpe (Honda)</th>
-        <th>Stromaggregat (Honda)</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>Allgemeiner Zustand</td>
-        <td><div class="check-center"><label><input type="checkbox" id="m1-ok"> Alles i.O.</label></div></td>
-        <td><div class="check-center"><label><input type="checkbox" id="m2-ok"> Alles i.O.</label></div></td>
-        <td><div class="check-center"><label><input type="checkbox" id="m3-ok"> Alles i.O.</label></div></td>
-      </tr>
-      <tr>
-        <td>Betriebsdauer</td>
-        <td><input type="number" id="m1-min" min="0" placeholder="0"> min</td>
-        <td><input type="number" id="m2-min" min="0" placeholder="0"> min</td>
-        <td><input type="number" id="m3-min" min="0" placeholder="0"> min</td>
-      </tr>
-      <tr>
-        <td>Treibstoff</td>
-        <td><input type="number" id="m1-l" min="0" step=".1" placeholder="0"> Liter</td>
-        <td><input type="number" id="m2-l" min="0" step=".1" placeholder="0"> Liter</td>
-        <td><input type="number" id="m3-l" min="0" step=".1" placeholder="0"> Liter</td>
-      </tr>
-    </tbody>
-  </table>
+  <div class="maschinen-grid">
+    <div class="maschinen-corner" style="grid-column:1; grid-row:1;"></div>
+    <div class="maschinen-row-label" style="grid-column:1; grid-row:2;">Allgemeiner Zustand</div>
+    <div class="maschinen-row-label" style="grid-column:1; grid-row:3;">Betriebsdauer</div>
+    <div class="maschinen-row-label" style="grid-column:1; grid-row:4;">Treibstoff</div>
+
+    <div class="maschinen-card">
+      <div class="maschinen-card-title" style="grid-column:2; grid-row:1;">Löschpumpe (JOHSTADT)</div>
+      <div class="maschinen-field" data-label="Allgemeiner Zustand" style="grid-column:2; grid-row:2;">
+        <div class="check-center"><label><input type="checkbox" id="m1-ok"> Alles i.O.</label></div>
+      </div>
+      <div class="maschinen-field" data-label="Betriebsdauer" style="grid-column:2; grid-row:3;">
+        <input type="number" id="m1-min" min="0" placeholder="0"> min
+      </div>
+      <div class="maschinen-field" data-label="Treibstoff" style="grid-column:2; grid-row:4;">
+        <input type="number" id="m1-l" min="0" step=".1" placeholder="0"> Liter
+      </div>
+    </div>
+
+    <div class="maschinen-card">
+      <div class="maschinen-card-title" style="grid-column:3; grid-row:1;">Schmutzwasserpumpe (Honda)</div>
+      <div class="maschinen-field" data-label="Allgemeiner Zustand" style="grid-column:3; grid-row:2;">
+        <div class="check-center"><label><input type="checkbox" id="m2-ok"> Alles i.O.</label></div>
+      </div>
+      <div class="maschinen-field" data-label="Betriebsdauer" style="grid-column:3; grid-row:3;">
+        <input type="number" id="m2-min" min="0" placeholder="0"> min
+      </div>
+      <div class="maschinen-field" data-label="Treibstoff" style="grid-column:3; grid-row:4;">
+        <input type="number" id="m2-l" min="0" step=".1" placeholder="0"> Liter
+      </div>
+    </div>
+
+    <div class="maschinen-card">
+      <div class="maschinen-card-title" style="grid-column:4; grid-row:1;">Stromaggregat (Honda)</div>
+      <div class="maschinen-field" data-label="Allgemeiner Zustand" style="grid-column:4; grid-row:2;">
+        <div class="check-center"><label><input type="checkbox" id="m3-ok"> Alles i.O.</label></div>
+      </div>
+      <div class="maschinen-field" data-label="Betriebsdauer" style="grid-column:4; grid-row:3;">
+        <input type="number" id="m3-min" min="0" placeholder="0"> min
+      </div>
+      <div class="maschinen-field" data-label="Treibstoff" style="grid-column:4; grid-row:4;">
+        <input type="number" id="m3-l" min="0" step=".1" placeholder="0"> Liter
+      </div>
+    </div>
+  </div>
 
   <hr class="thin">
 
@@ -481,11 +598,13 @@
 
   <!-- FOOTER -->
   <div class="footer">
-    <button class="btn btn-reset" onclick="resetForm()">Zurücksetzen</button>
-    <button class="btn btn-submit" id="submitBtn" onclick="submitForm()">Absenden</button>
-    <button class="btn btn-download" id="downloadBtn" onclick="downloadPDF()">PDF herunterladen</button>
+    <div class="footer-buttons">
+      <button class="btn btn-reset" onclick="resetForm()">Zurücksetzen</button>
+      <button class="btn btn-submit" id="submitBtn" onclick="submitForm()">Absenden</button>
+      <button class="btn btn-download" id="downloadBtn" onclick="downloadPDF()">PDF herunterladen</button>
+    </div>
     <div class="sig-row">
-      <label for="sig_crew">Unterschrift Protokollführer/-in:</label>
+      <label for="sig_crew">Protokollführer/-in:</label>
       <select id="sig_crew" style="flex:1">
         <option value="">Protokollführer/-in</option>
       </select>
@@ -1025,7 +1144,7 @@
     // ---- Footer / signature ----
     ensureSpace(16);
     pdf.setFontSize(9);
-    const sigLabel = 'Unterschrift Protokollführer/-in:   ';
+    const sigLabel = 'Protokollführer/-in:   ';
     const sigName = val('sig_crew') || '-';
     pdf.setFont('LiberationSans', 'normal');
     const sigLabelWidth = pdf.getTextWidth(sigLabel);
@@ -1063,7 +1182,7 @@
   async function submitForm() {
     const sig = document.getElementById('sig_crew').value.trim();
     if (!sig) {
-      alert('Bitte Unterschrift eintragen.');
+      alert('Bitte Protokollführer/-in auswählen.');
       return;
     }
 
@@ -1084,7 +1203,7 @@
       const bodyText =
         'Hallo\n\n' +
         'Im Anhang der ausgefüllte Pikettrapport.\n\n' +
-        `Unterschrift Protokollführer/-in: ${sig}`;
+        `Protokollführer/-in: ${sig}`;
 
       // Link, der das Formular mit allen aktuell eingegebenen Werten wieder
       // oeffnet (siehe buildEditUrl / applyEditLinkIfPresent oben). Wird nur
@@ -1138,7 +1257,7 @@
   async function downloadPDF() {
     const sig = document.getElementById('sig_crew').value.trim();
     if (!sig) {
-      alert('Bitte Unterschrift eintragen.');
+      alert('Bitte Protokollführer/-in auswählen.');
       return;
     }
 
