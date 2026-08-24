@@ -80,13 +80,15 @@
     .date-row input[type="text"] { width: 110px; }
     .date-row .time-group { display: flex; align-items: center; gap: 4px; }
     .date-row .time-group span { font-size: 10px; color: #666; }
-    /* Lines the Einsatzbeginn input up with the Datum input above it and the
-       crew fields below it. The Datum input sits at (label min-width 88px +
-       row column-gap 18px) = 106px from the row's left edge. Einsatzbeginn's
-       span uses the time-group's own tighter 4px gap to its input instead of
-       the row's 18px gap, so its min-width is padded to 102px (102 + 4 =
-       106) to land the input at the same 106px mark. */
-    .date-row .time-group span.lead-label { min-width: 102px; display: inline-block; }
+    /* Row 2 has no leading "Datum:"/"Mannschaft:"-style label of its own -
+       "Einsatzbeginn:" is meant to sit alongside its value like
+       Einsatzende/Einsatzdauer do, not occupy the wide label column. This
+       invisible spacer (same 88px width as the label column + the row's own
+       18px gap = 106px) pushes the whole "Einsatzbeginn: ... Einsatzende:
+       ... Einsatzdauer: ..." group over so it starts at the exact same x as
+       the Datum input above and the crew fields below, instead of at the
+       row's left edge under the other labels. */
+    .date-row-spacer { display: inline-block; width: 88px; }
     .mannschaft-row {
       display: flex;
       align-items: flex-start;
@@ -129,6 +131,9 @@
 
     select.placeholder { color: #999; }
     select option[value=""] { color: #999; }
+    /* Same light-gray placeholder look as "Crew hinzufügen" above, for the
+       always-visible "Weitere" manual-entry field under Weitere Organisationen. */
+    #org-andere-detail::placeholder, #dienst-andere-detail::placeholder { color: #999; }
 
     input:focus, textarea:focus { border-bottom-color: #1a4fa0; background: #eef3fb; }
     /* Computed fields (Einsatzdauer) - same look as a regular field but visibly
@@ -188,6 +193,16 @@
       display: flex; align-items: center; gap: 5px;
       font-size: 10.5px; padding: 1.5px 0; cursor: pointer;
     }
+    /* Free-text field paired with a radio option (e.g. "Andere:" under
+       Aufgebot durch) - hidden until that option is selected, wired up by
+       wireRadioDetail() below. */
+    .defekt-input { display: none; }
+    .defekt-input.visible { display: inline-block; width: 100%; margin-top: 2px; }
+    /* Same idea, but for a field that sits inline next to a <select> inside a
+       wide .field-control row (Vorgefunden: Boot "nicht gelistet") instead of
+       stacking full-width below a narrow option column. */
+    .inline-detail { display: none; }
+    .inline-detail.visible { display: inline-block; flex: 1; min-width: 140px; }
 
     /* ---------------------------------------------------- POSITION / GPS ---------------------------------------------------- */
     .gps-row { display: flex; align-items: center; gap: 4px; margin-bottom: 3px; flex-wrap: wrap; }
@@ -212,6 +227,28 @@
     .owner-col-title { font-weight: 700; font-size: 10.5px; margin-bottom: 3px; }
     .owner-col input { width: 100%; margin-bottom: 4px; }
     .owner-col input:last-child { margin-bottom: 0; }
+
+    /* Signature pad (Bootsführer/in) - captured as vector pen strokes, not a
+       raster image, so it stays small enough to round-trip through the
+       Bearbeiten-Link (see the JS section for why) and can be drawn into the
+       PDF as real vector lines like everything else in this report. */
+    .signature-block { margin-top: 10px; }
+    .signature-pad-wrap { position: relative; max-width: 320px; margin-top: 3px; }
+    .signature-pad {
+      display: block; width: 100%; height: 90px;
+      border: 1px solid #ccc; border-radius: 2px; background: #fff;
+      touch-action: none; cursor: crosshair;
+    }
+    .signature-placeholder {
+      position: absolute; left: 8px; top: 50%; transform: translateY(-50%);
+      font-size: 10.5px; color: #999; pointer-events: none;
+    }
+    .signature-clear-btn {
+      margin-top: 4px; font-size: 10px; padding: 3px 10px;
+      border: 1px solid #ccc; background: #f5f5f5; color: #333;
+      border-radius: 2px; cursor: pointer;
+    }
+    .signature-clear-btn:hover { background: #ececea; }
     .fuehrer-eigner-toggle {
       display: flex; align-items: center; gap: 5px;
       font-size: 10.5px; color: #444; margin-left: 14px; cursor: pointer;
@@ -288,6 +325,11 @@
       /* Hide the municipality badge in the header - too cramped to read at this width */
       .header-badge { display: none; }
 
+      /* The desktop-only spacer that lines "Einsatzbeginn:" up with the
+         Datum/crew fields would otherwise leave it awkwardly indented once
+         the row wraps to its own line at this width. */
+      .date-row-spacer { display: none; }
+
       /* Mannschaft: label on its own line, crew dropdowns get the full row width below it. */
       .mannschaft-row { flex-direction: column; align-items: stretch; gap: 4px; }
       .mannschaft-row label { min-width: 0; padding-top: 0; }
@@ -357,7 +399,8 @@
       <div class="time-group"><span>Einsatzalarm:</span> <input type="text" id="einsatzalarm" style="width:55px" placeholder="hh:mm"></div>
     </div>
     <div class="date-row">
-      <div class="time-group"><span class="lead-label">Einsatzbeginn:</span> <input type="text" id="einsatzbeginn" style="width:55px" placeholder="hh:mm"></div>
+      <span class="date-row-spacer" aria-hidden="true"></span>
+      <div class="time-group"><span>Einsatzbeginn:</span> <input type="text" id="einsatzbeginn" style="width:55px" placeholder="hh:mm"></div>
       <div class="time-group"><span>Einsatzende:</span> <input type="text" id="einsatzende" style="width:55px" placeholder="hh:mm"></div>
       <div class="time-group"><span>Einsatzdauer:</span> <input type="text" id="einsatzdauer" style="width:70px" placeholder="hh:mm" readonly></div>
     </div>
@@ -392,27 +435,29 @@
       <label class="option-item"><input type="radio" name="aufgebot" id="aufgebot-seepo" value="Seepo SZ"> Seepo SZ</label>
       <label class="option-item"><input type="radio" name="aufgebot" id="aufgebot-kapo" value="Kapo ZH"> Kapo ZH</label>
       <label class="option-item"><input type="radio" name="aufgebot" id="aufgebot-obmann" value="Obmann"> Obmann</label>
+      <label class="option-item"><input type="radio" name="aufgebot" id="aufgebot-andere" value="Andere"> Andere:</label>
+      <input type="text" id="aufgebot-andere-detail" class="defekt-input" placeholder="Angabe">
     </div>
     <div class="option-col">
       <div class="option-col-title">Art des Einsatzes</div>
       <label class="option-item"><input type="radio" name="art-einsatz" id="art-einsatz" value="Einsatz"> Einsatz</label>
       <label class="option-item"><input type="radio" name="art-einsatz" id="art-auftrag" value="Auftrag / Veranstaltung"> Auftrag / Veranstaltung</label>
-      <div class="option-col-subtitle">Eingesetztes Mittel:</div>
+      <div class="option-col-title">Eingesetztes Mittel:</div>
       <label class="option-item"><input type="checkbox" id="mittel-biene"> Biene III</label>
       <label class="option-item"><input type="checkbox" id="mittel-weidling"> FW-Weidling</label>
     </div>
     <div class="option-col">
       <div class="option-col-title">Wetter</div>
-      <label class="option-item"><input type="checkbox" id="wetter-schoen"> Schön</label>
-      <label class="option-item"><input type="checkbox" id="wetter-niederschlag"> Niederschlag</label>
-      <label class="option-item"><input type="checkbox" id="wetter-wechselhaft"> Wechselhaft</label>
-      <label class="option-item"><input type="checkbox" id="wetter-nebel"> Nebel</label>
+      <label class="option-item"><input type="radio" name="wetter" id="wetter-schoen" value="Schön"> Schön</label>
+      <label class="option-item"><input type="radio" name="wetter" id="wetter-niederschlag" value="Niederschlag"> Niederschlag</label>
+      <label class="option-item"><input type="radio" name="wetter" id="wetter-wechselhaft" value="Wechselhaft"> Wechselhaft</label>
+      <label class="option-item"><input type="radio" name="wetter" id="wetter-nebel" value="Nebel"> Nebel</label>
     </div>
     <div class="option-col">
       <div class="option-col-title">Windwarnung</div>
-      <label class="option-item"><input type="checkbox" id="wind-stark"> Starkwindwarnung</label>
-      <label class="option-item"><input type="checkbox" id="wind-sturm"> Sturmwarnung</label>
-      <label class="option-item"><input type="checkbox" id="wind-keine"> Keine Windwarnung</label>
+      <label class="option-item"><input type="radio" name="wind" id="wind-stark" value="Starkwindwarnung"> Starkwindwarnung</label>
+      <label class="option-item"><input type="radio" name="wind" id="wind-sturm" value="Sturmwarnung"> Sturmwarnung</label>
+      <label class="option-item"><input type="radio" name="wind" id="wind-keine" value="Keine Windwarnung"> Keine Windwarnung</label>
     </div>
   </div>
 
@@ -423,10 +468,12 @@
   <div class="option-matrix cols-3">
     <div class="option-col">
       <div class="option-col-title">Gemeindegebiet</div>
-      <label class="option-item"><input type="checkbox" id="gemeinde-wollerau"> Wollerau</label>
-      <label class="option-item"><input type="checkbox" id="gemeinde-freienbach"> Freienbach</label>
-      <label class="option-item"><input type="checkbox" id="gemeinde-altendorf"> Altendorf</label>
-      <label class="option-item"><input type="checkbox" id="gemeinde-lachen"> Lachen</label>
+      <label class="option-item"><input type="radio" name="gemeinde" id="gemeinde-wollerau" value="Wollerau"> Wollerau</label>
+      <label class="option-item"><input type="radio" name="gemeinde" id="gemeinde-freienbach" value="Freienbach"> Freienbach</label>
+      <label class="option-item"><input type="radio" name="gemeinde" id="gemeinde-altendorf" value="Altendorf"> Altendorf</label>
+      <label class="option-item"><input type="radio" name="gemeinde" id="gemeinde-lachen" value="Lachen"> Lachen</label>
+      <label class="option-item"><input type="radio" name="gemeinde" id="gemeinde-andere" value="Andere"> Andere:</label>
+      <input type="text" id="gemeinde-andere-detail" class="defekt-input" placeholder="Angabe">
     </div>
     <div class="option-col">
       <div class="option-col-title">Position</div>
@@ -456,6 +503,10 @@
       <label class="option-item"><input type="checkbox" id="org-arzt"> Arzt / Ambulanz</label>
       <label class="option-item"><input type="checkbox" id="org-feuerwehr"> Feuerwehr</label>
       <label class="option-item"><input type="checkbox" id="org-rega"> Rega</label>
+      <div class="option-item">
+        <input type="checkbox" id="org-andere">
+        <input type="text" id="org-andere-detail" placeholder="Weitere" style="flex:1">
+      </div>
     </div>
   </div>
 
@@ -474,7 +525,19 @@
     </div>
     <div class="field-row">
       <div class="field-label">Boot</div>
-      <div class="field-control"><input type="text" id="vorgefunden-boot" style="width:100%"></div>
+      <div class="field-control">
+        <select id="vorgefunden-boot">
+          <option value="">Zustand</option>
+          <option value="gesunken">gesunken</option>
+          <option value="treibend">treibend</option>
+          <option value="aufgefahren">aufgefahren</option>
+          <option value="geankert">geankert</option>
+          <option value="brennend">brennend</option>
+          <option value="gekentert">gekentert</option>
+          <option value="nicht gelistet">nicht gelistet</option>
+        </select>
+        <input type="text" id="vorgefunden-boot-detail" class="inline-detail" placeholder="bitte beschreiben">
+      </div>
     </div>
     <div class="field-row">
       <div class="field-label">Geleistete Dienste</div>
@@ -484,12 +547,14 @@
           <label><input type="checkbox" id="dienst-ausgepumpt"> ausgepumpt</label>
           <label><input type="checkbox" id="dienst-geloescht"> gelöscht</label>
           <label><input type="checkbox" id="dienst-erste-hilfe"> Erste Hilfe</label>
+          <div class="option-item">
+            <input type="checkbox" id="dienst-andere">
+            <input type="text" id="dienst-andere-detail" placeholder="Weitere" style="flex:1; min-width:140px">
+          </div>
+          <label><input type="checkbox" id="dienst-abgeschleppt"> abgeschleppt nach</label>
+          <input type="text" id="abgeschleppt-nach" class="inline-detail" placeholder="Zielort">
         </div>
       </div>
-    </div>
-    <div class="field-row">
-      <div class="field-label">Abgeschleppt nach</div>
-      <div class="field-control"><input type="text" id="abgeschleppt-nach" style="width:100%"></div>
     </div>
   </div>
 
@@ -507,10 +572,17 @@
     <div class="field-row">
       <div class="field-label">Bootstyp</div>
       <div class="field-control">
-        <div class="check-group">
-          <label><input type="checkbox" id="boot-motorboot"> Motorboot</label>
-          <label><input type="checkbox" id="boot-segelboot"> Segelboot</label>
-        </div>
+        <select id="boot-typ">
+          <option value="">Bootstyp</option>
+          <option value="Motorboot">Motorboot</option>
+          <option value="Segelboot">Segelboot</option>
+          <option value="SUP">SUP</option>
+          <option value="Pedalo">Pedalo</option>
+          <option value="Jolle">Jolle</option>
+          <option value="Ruderboot">Ruderboot</option>
+          <option value="nicht gelistet">nicht gelistet</option>
+        </select>
+        <input type="text" id="boot-typ-detail" class="inline-detail" placeholder="bitte beschreiben">
       </div>
     </div>
     <div class="field-row">
@@ -539,6 +611,15 @@
       <input type="text" id="eigner-plz-ort" placeholder="PLZ / Ort">
       <input type="text" id="eigner-tel" placeholder="Tel.">
     </div>
+  </div>
+
+  <div class="signature-block">
+    <div class="owner-col-title">Unterschrift Bootsführer/in</div>
+    <div class="signature-pad-wrap">
+      <canvas id="fuehrer-signatur-pad" class="signature-pad" width="600" height="170"></canvas>
+      <span class="signature-placeholder" id="fuehrer-signatur-placeholder">Hier unterschreiben</span>
+    </div>
+    <button type="button" class="signature-clear-btn" onclick="clearSignaturePad()">Unterschrift löschen</button>
   </div>
 
   <hr class="thin">
@@ -689,6 +770,141 @@
   document.getElementById('einsatzbericht').addEventListener('input', autoResizeEinsatzbericht);
   autoResizeEinsatzbericht();
 
+  /* ---------------------------------------------------- RADIO-PAIRED FREE-TEXT FIELD ("Andere") ---------------------------------------------------- */
+  // Reveals detailId only while the radio option whose value is in matchValues
+  // is the one selected in the group; hidden (but not cleared) otherwise.
+  // (Weitere Organisationen's "Andere" field is always visible instead - see
+  // its own placeholder styling above - so it has no wiring here.)
+  function wireRadioDetail(name, detailId, matchValues) {
+    document.querySelectorAll(`input[name="${name}"]`).forEach(r => {
+      r.addEventListener('change', () => {
+        const el = document.getElementById(detailId);
+        el.classList.toggle('visible', r.checked && matchValues.includes(r.value));
+      });
+    });
+  }
+  wireRadioDetail('aufgebot', 'aufgebot-andere-detail', ['Andere']);
+  wireRadioDetail('gemeinde', 'gemeinde-andere-detail', ['Andere']);
+
+  // Same idea, but for a checkbox instead of a radio group (Geleistete
+  // Dienste: "abgeschleppt nach" reveals its destination field only while
+  // checked). fillForm() dispatches 'change' on checkboxes after restoring
+  // them, so this stays in sync on an edit-link round trip without needing
+  // an explicit re-invoke there (unlike the <select>-driven detail below).
+  function wireCheckDetail(checkId, detailId) {
+    const checkEl = document.getElementById(checkId);
+    const detailEl = document.getElementById(detailId);
+    checkEl.addEventListener('change', () => {
+      detailEl.classList.toggle('visible', checkEl.checked);
+    });
+  }
+  wireCheckDetail('dienst-abgeschleppt', 'abgeschleppt-nach');
+
+  // Same idea, but for the Vorgefunden: Boot <select> - "nicht gelistet"
+  // reveals a manual-entry field next to it. Named (rather than built with
+  // wireRadioDetail) so fillForm() can also re-run it after an edit-link
+  // restore, since setting .value programmatically there doesn't fire 'change'.
+  function updateVorgefundenBootDetail() {
+    document.getElementById('vorgefunden-boot-detail')
+      .classList.toggle('visible', val('vorgefunden-boot') === 'nicht gelistet');
+  }
+  wireSelectPlaceholder('vorgefunden-boot');
+  document.getElementById('vorgefunden-boot').addEventListener('change', updateVorgefundenBootDetail);
+  updateVorgefundenBootDetail();
+
+  // Same idea, for the Boot section's Bootstyp <select>.
+  function updateBootTypDetail() {
+    document.getElementById('boot-typ-detail')
+      .classList.toggle('visible', val('boot-typ') === 'nicht gelistet');
+  }
+  wireSelectPlaceholder('boot-typ');
+  document.getElementById('boot-typ').addEventListener('change', updateBootTypDetail);
+  updateBootTypDetail();
+
+  /* ---------------------------------------------------- SIGNATURE PAD (Bootsführer/in) ---------------------------------------------------- */
+  // Captured as vector pen strokes - an array of flat [x0,y0,x1,y1,...]
+  // number arrays in the canvas's own 600x170 coordinate space, one per
+  // stroke - rather than a canvas.toDataURL() raster image. A PNG signature
+  // would bloat the Bearbeiten-Link (the whole form round-trips through a
+  // base64 JSON blob in the URL, mailed to the crew) well past what mail
+  // clients/servers reliably preserve; a typical signature's stroke points
+  // stay in the same size ballpark as a couple of sentences of typed text.
+  // This also lets the PDF draw the actual pen strokes as real vector
+  // lines/rects, consistent with the rest of this report's vector-only
+  // output, instead of embedding a raster image.
+  let fuehrerSignaturStrokes = [];
+
+  function initSignaturePad() {
+    const canvas = document.getElementById('fuehrer-signatur-pad');
+    if (!canvas || !canvas.getContext) return;
+    const ctx = canvas.getContext('2d');
+    const placeholder = document.getElementById('fuehrer-signatur-placeholder');
+    let currentStroke = null;
+
+    function redraw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = '#1a1a1a';
+      ctx.lineWidth = 2.2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      fuehrerSignaturStrokes.forEach(stroke => {
+        if (stroke.length < 4) return;
+        ctx.beginPath();
+        ctx.moveTo(stroke[0], stroke[1]);
+        for (let i = 2; i < stroke.length; i += 2) ctx.lineTo(stroke[i], stroke[i + 1]);
+        ctx.stroke();
+      });
+      if (placeholder) placeholder.style.display = fuehrerSignaturStrokes.length ? 'none' : '';
+    }
+
+    function pointFromEvent(e) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      return [
+        Math.round((e.clientX - rect.left) * scaleX),
+        Math.round((e.clientY - rect.top) * scaleY),
+      ];
+    }
+
+    function start(e) {
+      e.preventDefault();
+      const [x, y] = pointFromEvent(e);
+      currentStroke = [x, y];
+      fuehrerSignaturStrokes.push(currentStroke);
+      canvas.setPointerCapture(e.pointerId);
+    }
+    function move(e) {
+      if (!currentStroke) return;
+      e.preventDefault();
+      const [x, y] = pointFromEvent(e);
+      // Skip near-duplicate points (fast pointermove events on a small pad)
+      // to keep the stroke data compact without visibly affecting quality.
+      const lastX = currentStroke[currentStroke.length - 2];
+      const lastY = currentStroke[currentStroke.length - 1];
+      if (Math.abs(x - lastX) < 1.5 && Math.abs(y - lastY) < 1.5) return;
+      currentStroke.push(x, y);
+      redraw();
+    }
+    function end() { currentStroke = null; }
+
+    canvas.addEventListener('pointerdown', start);
+    canvas.addEventListener('pointermove', move);
+    canvas.addEventListener('pointerup', end);
+    canvas.addEventListener('pointercancel', end);
+    canvas.addEventListener('pointerleave', end);
+
+    redraw();
+    canvas.__redraw = redraw;
+  }
+  initSignaturePad();
+
+  function clearSignaturePad() {
+    fuehrerSignaturStrokes = [];
+    const canvas = document.getElementById('fuehrer-signatur-pad');
+    if (canvas && canvas.__redraw) canvas.__redraw();
+  }
+
   /* ---------------------------------------------------- EINSATZDAUER (COMPUTED) ---------------------------------------------------- */
   // Einsatzdauer is derived from Einsatzbeginn/Einsatzende, not typed in directly
   // (the field is readonly - see CSS). Handles the overnight case, e.g.
@@ -785,6 +1001,8 @@
       });
       document.getElementById('einsatzbericht').style.height = '';
       document.querySelectorAll('#eigner-name, #eigner-strasse, #eigner-plz-ort, #eigner-tel').forEach(el => { el.disabled = false; });
+      document.querySelectorAll('.defekt-input, .inline-detail').forEach(el => el.classList.remove('visible'));
+      if (typeof clearSignaturePad === 'function') clearSignaturePad();
       updateBillingTotal();
     }
   }
@@ -811,6 +1029,10 @@
       const checked = document.querySelector(`input[name="${name}"]:checked`);
       data.radios[name] = checked ? checked.value : null;
     });
+
+    // Signature pad strokes (see the SIGNATURE PAD section above for why
+    // these are stored as vector points rather than a raster image).
+    data.fuehrerSignatur = fuehrerSignaturStrokes;
 
     return data;
   }
@@ -846,6 +1068,14 @@
     });
     if (typeof updateBillingTotal === 'function') updateBillingTotal();
     if (typeof updateEinsatzdauer === 'function') updateEinsatzdauer();
+    if (typeof updateVorgefundenBootDetail === 'function') updateVorgefundenBootDetail();
+    if (typeof updateBootTypDetail === 'function') updateBootTypDetail();
+
+    if (Array.isArray(data.fuehrerSignatur)) {
+      fuehrerSignaturStrokes = data.fuehrerSignatur;
+      const canvas = document.getElementById('fuehrer-signatur-pad');
+      if (canvas && canvas.__redraw) canvas.__redraw();
+    }
   }
 
   function encodeFormData(data) {
@@ -892,6 +1122,37 @@
     return el ? el.value : null;
   }
 
+  // "Aufgebot durch" prints the typed-in text when "Andere" is selected,
+  // instead of the literal word "Andere" - falling back to "Andere" if the
+  // detail field was left blank.
+  function aufgebotText() {
+    const v = radioValue('aufgebot');
+    if (v === 'Andere') return val('aufgebot-andere-detail') || 'Andere';
+    return v || '-';
+  }
+
+  // Same "Andere" free-text fallback as aufgebotText(), for Gemeindegebiet.
+  function gemeindeText() {
+    const v = radioValue('gemeinde');
+    if (v === 'Andere') return val('gemeinde-andere-detail') || 'Andere';
+    return v || '-';
+  }
+
+  // Same idea, for Vorgefunden: Boot's <select> - "nicht gelistet" prints the
+  // typed description instead of the literal option text.
+  function vorgefundenBootText() {
+    const v = val('vorgefunden-boot');
+    if (v === 'nicht gelistet') return val('vorgefunden-boot-detail') || 'nicht gelistet';
+    return v || '-';
+  }
+
+  // Same idea, for the Boot section's Bootstyp <select>.
+  function bootTypText() {
+    const v = val('boot-typ');
+    if (v === 'nicht gelistet') return val('boot-typ-detail') || 'nicht gelistet';
+    return v || '-';
+  }
+
   function crewList() {
     return ['a', 'b', 'c', 'd', 'e']
       .map(letter => val(`crew_${letter}`))
@@ -903,6 +1164,40 @@
   // one comma-separated string, e.g. "Schön, Nebel" - falls back to '-' if none checked.
   function checkedList(pairs) {
     const picked = pairs.filter(([id]) => isChecked(id)).map(([, label]) => label);
+    return picked.length ? picked.join(', ') : '-';
+  }
+
+  // Like checkedList(), but the last entry is a checkbox paired with an
+  // always-visible free-text field (Weitere Organisationen's checkbox +
+  // "Weitere" input) instead of a fixed label - its typed text is joined in
+  // only while that checkbox is checked (checked-but-empty adds nothing).
+  function checkedListWithOther(pairs, otherId, otherDetailId) {
+    const picked = pairs.filter(([id]) => isChecked(id)).map(([, label]) => label);
+    if (isChecked(otherId)) {
+      const extra = val(otherDetailId);
+      if (extra) picked.push(extra);
+    }
+    return picked.length ? picked.join(', ') : '-';
+  }
+
+  // Geleistete Dienste: the four fixed checkboxes plus two checkbox+free-text
+  // "other" entries - "abgeschleppt nach" (printed with a label prefix) and a
+  // generic "Weitere" manual entry (printed as-is, like Weitere
+  // Organisationen's Andere). Each contributes only while its own checkbox
+  // is checked and its text is non-empty.
+  function dienstText() {
+    const picked = [
+      ['dienst-ueberbrueckt', 'überbrückt'], ['dienst-ausgepumpt', 'ausgepumpt'],
+      ['dienst-geloescht', 'gelöscht'], ['dienst-erste-hilfe', 'Erste Hilfe'],
+    ].filter(([id]) => isChecked(id)).map(([, label]) => label);
+    if (isChecked('dienst-andere')) {
+      const v = val('dienst-andere-detail');
+      if (v) picked.push(v);
+    }
+    if (isChecked('dienst-abgeschleppt')) {
+      const v = val('abgeschleppt-nach');
+      if (v) picked.push(`abgeschleppt nach: ${v}`);
+    }
     return picked.length ? picked.join(', ') : '-';
   }
 
@@ -1094,50 +1389,37 @@
 
     // ---- Einsatzdetails ----
     sectionTitle('Einsatzdetails');
-    fieldRow('Aufgebot durch', radioValue('aufgebot') || '-');
+    fieldRow('Aufgebot durch', aufgebotText());
     fieldRow('Art des Einsatzes', radioValue('art-einsatz') || '-');
     fieldRow('Eingesetztes Mittel', checkedList([
       ['mittel-biene', 'Biene III'], ['mittel-weidling', 'FW-Weidling'],
     ]));
-    fieldRow('Wetter', checkedList([
-      ['wetter-schoen', 'Schön'], ['wetter-niederschlag', 'Niederschlag'],
-      ['wetter-wechselhaft', 'Wechselhaft'], ['wetter-nebel', 'Nebel'],
-    ]));
-    fieldRow('Windwarnung', checkedList([
-      ['wind-stark', 'Starkwindwarnung'], ['wind-sturm', 'Sturmwarnung'], ['wind-keine', 'Keine Windwarnung'],
-    ]));
+    fieldRow('Wetter', radioValue('wetter') || '-');
+    fieldRow('Windwarnung', radioValue('wind') || '-');
     y += 0.5;
     hr(false);
 
     // ---- Gemeindegebiet & Position ----
     sectionTitle('Gemeindegebiet & Position');
-    fieldRow('Gemeindegebiet', checkedList([
-      ['gemeinde-wollerau', 'Wollerau'], ['gemeinde-freienbach', 'Freienbach'],
-      ['gemeinde-altendorf', 'Altendorf'], ['gemeinde-lachen', 'Lachen'],
-    ]));
+    fieldRow('Gemeindegebiet', gemeindeText());
     const gpsN = (val('gps-n-deg') || val('gps-n-min')) ? `${val('gps-n-deg') || '0'}° ${val('gps-n-min') || '0'}' N` : '';
     const gpsO = (val('gps-o-deg') || val('gps-o-min')) ? `${val('gps-o-deg') || '0'}° ${val('gps-o-min') || '0'}' O` : '';
     const gpsText = [gpsN, gpsO].filter(Boolean).join('  /  ');
     fieldRow('Position (GPS)', gpsText || '-');
     const relativText = [val('relativ1'), val('relativ2')].filter(Boolean).join('\n');
     fieldRow('Relativ', relativText || '-');
-    fieldRow('Weitere Organisationen', checkedList([
+    fieldRow('Weitere Organisationen', checkedListWithOther([
       ['org-seepo', 'Seepo SZ'], ['org-kapo', 'Kapo ZH'], ['org-arzt', 'Arzt / Ambulanz'],
       ['org-feuerwehr', 'Feuerwehr'], ['org-rega', 'Rega'],
-    ]));
+    ], 'org-andere', 'org-andere-detail'));
     y += 0.5;
     hr(false);
 
     // ---- Vorgefunden ----
     sectionTitle('Vorgefunden');
     fieldRow('Anzahl Personen', `${val('anzahl-frauen') || '0'} Frauen  /  ${val('anzahl-maenner') || '0'} Männer  /  ${val('anzahl-kinder') || '0'} Kinder`);
-    fieldRow('Boot', val('vorgefunden-boot') || '-');
-    const dienste = checkedList([
-      ['dienst-ueberbrueckt', 'überbrückt'], ['dienst-ausgepumpt', 'ausgepumpt'],
-      ['dienst-geloescht', 'gelöscht'], ['dienst-erste-hilfe', 'Erste Hilfe'],
-    ]);
-    const abgeschleppt = val('abgeschleppt-nach');
-    fieldRow('Geleistete Dienste', abgeschleppt ? `${dienste}, abgeschleppt nach: ${abgeschleppt}` : dienste);
+    fieldRow('Boot', vorgefundenBootText());
+    fieldRow('Geleistete Dienste', dienstText());
     y += 0.5;
     hr(false);
 
@@ -1158,9 +1440,7 @@
     // ---- Boot ----
     hr(false);
     sectionTitle('Boot');
-    fieldRow('Bootstyp', checkedList([
-      ['boot-motorboot', 'Motorboot'], ['boot-segelboot', 'Segelboot'],
-    ]));
+    fieldRow('Bootstyp', bootTypText());
     fieldRow('Kennzeichen', val('kennzeichen') || '-');
 
     // Bootsfuehrer/in & Bootseigner/in side by side
@@ -1183,6 +1463,36 @@
     const yAfterA = ownerBlock('Bootsführer/in', 'fuehrer-name', 'fuehrer-strasse', 'fuehrer-plz-ort', 'fuehrer-tel', marginX, colW);
     const yAfterB = ownerBlock('Bootseigner/in', 'eigner-name', 'eigner-strasse', 'eigner-plz-ort', 'eigner-tel', marginX + colW + 10, colW);
     y = Math.max(yAfterA, yAfterB) + 3;
+
+    // ---- Unterschrift Bootsführer/in ----
+    // Drawn as real vector line segments from the captured pen-stroke points
+    // (see the SIGNATURE PAD section in the form JS for why they're stored
+    // as points, not a raster image) - consistent with the rest of this
+    // report's vector-only PDF output.
+    const sigBoxW = 70, sigBoxH = 19.8;
+    ensureSpace(lineH + sigBoxH + 6);
+    pdf.setFont('LiberationSans', 'bold');
+    pdf.setFontSize(9);
+    pdf.setTextColor(...ink);
+    pdf.text('Unterschrift Bootsführer/in', marginX, y);
+    y += lineH + 1;
+    pdf.setDrawColor(...lightGray);
+    pdf.setLineWidth(0.3);
+    pdf.rect(marginX, y, sigBoxW, sigBoxH, 'D');
+    if (fuehrerSignaturStrokes.length) {
+      const scaleX = sigBoxW / 600, scaleY = sigBoxH / 170;
+      pdf.setDrawColor(...ink);
+      pdf.setLineWidth(0.35);
+      fuehrerSignaturStrokes.forEach(stroke => {
+        for (let i = 2; i < stroke.length; i += 2) {
+          pdf.line(
+            marginX + stroke[i - 2] * scaleX, y + stroke[i - 1] * scaleY,
+            marginX + stroke[i] * scaleX, y + stroke[i + 1] * scaleY
+          );
+        }
+      });
+    }
+    y += sigBoxH + 4;
     hr(false);
 
     // ---- Protokollführer/-in ----
