@@ -80,10 +80,19 @@
     .date-row input[type="text"] { width: 110px; }
     .date-row .time-group { display: flex; align-items: center; gap: 4px; }
     .date-row .time-group span { font-size: 10px; color: #666; }
+    /* Lines the Einsatzbeginn input up with the Datum input above it and the
+       crew fields below it. The Datum input sits at (label min-width 88px +
+       row column-gap 18px) = 106px from the row's left edge. Einsatzbeginn's
+       span uses the time-group's own tighter 4px gap to its input instead of
+       the row's 18px gap, so its min-width is padded to 102px (102 + 4 =
+       106) to land the input at the same 106px mark. */
+    .date-row .time-group span.lead-label { min-width: 102px; display: inline-block; }
     .mannschaft-row {
       display: flex;
       align-items: flex-start;
-      gap: 8px;
+      /* 18px (not the tighter 8px used elsewhere) so Mannschaft's 88px label
+         also lands its crew fields at the same 106px mark as Datum/Einsatzbeginn. */
+      gap: 18px;
       margin-bottom: 2px;
     }
     .mannschaft-row label { min-width: 88px; color: #444; padding-top: 4px; }
@@ -345,11 +354,11 @@
     <div class="date-row">
       <label>Datum:</label>
       <input type="text" id="datum" placeholder="TT.MM.JJJJ" style="width:110px">
-      <div class="time-group"><span>Einsatzbeginn:</span> <input type="text" id="einsatzbeginn" style="width:55px" placeholder="hh:mm"></div>
-      <div class="time-group"><span>Einsatzende:</span> <input type="text" id="einsatzende" style="width:55px" placeholder="hh:mm"></div>
+      <div class="time-group"><span>Einsatzalarm:</span> <input type="text" id="einsatzalarm" style="width:55px" placeholder="hh:mm"></div>
     </div>
     <div class="date-row">
-      <div class="time-group"><span>Einsatzalarm:</span> <input type="text" id="einsatzalarm" style="width:55px" placeholder="hh:mm"></div>
+      <div class="time-group"><span class="lead-label">Einsatzbeginn:</span> <input type="text" id="einsatzbeginn" style="width:55px" placeholder="hh:mm"></div>
+      <div class="time-group"><span>Einsatzende:</span> <input type="text" id="einsatzende" style="width:55px" placeholder="hh:mm"></div>
       <div class="time-group"><span>Einsatzdauer:</span> <input type="text" id="einsatzdauer" style="width:70px" placeholder="hh:mm" readonly></div>
     </div>
     <div class="mannschaft-row">
@@ -379,15 +388,15 @@
   <div class="option-matrix">
     <div class="option-col">
       <div class="option-col-title">Aufgebot durch</div>
-      <label class="option-item"><input type="checkbox" id="aufgebot-elz"> ELZ (Pager / Funk)</label>
-      <label class="option-item"><input type="checkbox" id="aufgebot-seepo"> Seepo SZ</label>
-      <label class="option-item"><input type="checkbox" id="aufgebot-kapo"> Kapo ZH</label>
-      <label class="option-item"><input type="checkbox" id="aufgebot-obmann"> Obmann</label>
+      <label class="option-item"><input type="radio" name="aufgebot" id="aufgebot-elz" value="ELZ (Pager / Funk)"> ELZ (Pager / Funk)</label>
+      <label class="option-item"><input type="radio" name="aufgebot" id="aufgebot-seepo" value="Seepo SZ"> Seepo SZ</label>
+      <label class="option-item"><input type="radio" name="aufgebot" id="aufgebot-kapo" value="Kapo ZH"> Kapo ZH</label>
+      <label class="option-item"><input type="radio" name="aufgebot" id="aufgebot-obmann" value="Obmann"> Obmann</label>
     </div>
     <div class="option-col">
       <div class="option-col-title">Art des Einsatzes</div>
-      <label class="option-item"><input type="checkbox" id="art-einsatz"> Einsatz</label>
-      <label class="option-item"><input type="checkbox" id="art-auftrag"> Auftrag / Veranstaltung</label>
+      <label class="option-item"><input type="radio" name="art-einsatz" id="art-einsatz" value="Einsatz"> Einsatz</label>
+      <label class="option-item"><input type="radio" name="art-einsatz" id="art-auftrag" value="Auftrag / Veranstaltung"> Auftrag / Veranstaltung</label>
       <div class="option-col-subtitle">Eingesetztes Mittel:</div>
       <label class="option-item"><input type="checkbox" id="mittel-biene"> Biene III</label>
       <label class="option-item"><input type="checkbox" id="mittel-weidling"> FW-Weidling</label>
@@ -878,6 +887,11 @@
     return el ? el.checked : false;
   }
 
+  function radioValue(name) {
+    const el = document.querySelector(`input[name="${name}"]:checked`);
+    return el ? el.value : null;
+  }
+
   function crewList() {
     return ['a', 'b', 'c', 'd', 'e']
       .map(letter => val(`crew_${letter}`))
@@ -1045,25 +1059,25 @@
     pdf.text(val('datum') || '-', marginX + 22, y);
 
     pdf.setTextColor(...midGray);
-    pdf.text('Einsatzbeginn:', marginX + 68, y);
-    pdf.setTextColor(...ink);
-    pdf.text(val('einsatzbeginn') || '-', marginX + 98, y);
-
-    pdf.setTextColor(...midGray);
-    pdf.text('Einsatzende:', marginX + 122, y);
-    pdf.setTextColor(...ink);
-    pdf.text(val('einsatzende') || '-', marginX + 148, y);
-    y += 5.2;
-
-    pdf.setTextColor(...midGray);
     pdf.text('Einsatzalarm:', marginX + 68, y);
     pdf.setTextColor(...ink);
     pdf.text(val('einsatzalarm') || '-', marginX + 98, y);
+    y += 5.2;
+
+    pdf.setTextColor(...midGray);
+    pdf.text('Einsatzbeginn:', marginX, y);
+    pdf.setTextColor(...ink);
+    pdf.text(val('einsatzbeginn') || '-', marginX + 30, y);
+
+    pdf.setTextColor(...midGray);
+    pdf.text('Einsatzende:', marginX + 68, y);
+    pdf.setTextColor(...ink);
+    pdf.text(val('einsatzende') || '-', marginX + 98, y);
 
     pdf.setTextColor(...midGray);
     pdf.text('Einsatzdauer:', marginX + 122, y);
     pdf.setTextColor(...ink);
-    pdf.text(val('einsatzdauer') || '-', marginX + 148, y);
+    pdf.text(val('einsatzdauer') || '-', marginX + 152, y);
     y += 5.2;
 
     pdf.setFont('LiberationSans', 'normal');
@@ -1080,13 +1094,8 @@
 
     // ---- Einsatzdetails ----
     sectionTitle('Einsatzdetails');
-    fieldRow('Aufgebot durch', checkedList([
-      ['aufgebot-elz', 'ELZ (Pager / Funk)'], ['aufgebot-seepo', 'Seepo SZ'],
-      ['aufgebot-kapo', 'Kapo ZH'], ['aufgebot-obmann', 'Obmann'],
-    ]));
-    fieldRow('Art des Einsatzes', checkedList([
-      ['art-einsatz', 'Einsatz'], ['art-auftrag', 'Auftrag / Veranstaltung'],
-    ]));
+    fieldRow('Aufgebot durch', radioValue('aufgebot') || '-');
+    fieldRow('Art des Einsatzes', radioValue('art-einsatz') || '-');
     fieldRow('Eingesetztes Mittel', checkedList([
       ['mittel-biene', 'Biene III'], ['mittel-weidling', 'FW-Weidling'],
     ]));
