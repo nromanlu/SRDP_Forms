@@ -67,6 +67,26 @@
       color: #1a1a1a;
     }
 
+    /* Collapsible section ("Wird von Obmann ausgefüllt") - a <summary>
+       reuses .section-title's look, plus a small chevron that rotates open. */
+    .collapsible-section > summary.section-title {
+      cursor: pointer;
+      user-select: none;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .collapsible-section > summary.section-title::-webkit-details-marker { display: none; }
+    .collapsible-section > summary.section-title::before {
+      content: '▸';
+      display: inline-block;
+      font-size: 9px;
+      transition: transform .15s;
+    }
+    .collapsible-section[open] > summary.section-title::before { transform: rotate(90deg); }
+
     /* ---------------------------------------------------- DATE / MANNSCHAFT ROWS ---------------------------------------------------- */
     .date-block { margin-bottom: 10px; }
     .date-row {
@@ -233,22 +253,42 @@
        Bearbeiten-Link (see the JS section for why) and can be drawn into the
        PDF as real vector lines like everything else in this report. */
     .signature-block { margin-top: 10px; }
+    .signature-block .owner-col-title { font-weight: 400; }
     .signature-pad-wrap { position: relative; max-width: 320px; margin-top: 3px; }
+    /* Same look as .freetext-area (the Einsatzbericht box) - it's the same
+       "box the user writes/draws into" pattern, so the signature pad borrows
+       its border/background/focus treatment instead of the underline style
+       used for regular one-line inputs. */
     .signature-pad {
       display: block; width: 100%; height: 90px;
-      border: 1px solid #ccc; border-radius: 2px; background: #fff;
+      border: 1.5px solid #aaa; border-radius: 2px; background: #f7f7f5;
       touch-action: none; cursor: crosshair;
+      transition: border-color .15s;
     }
+    .signature-pad:focus { border-color: #1a4fa0; background: #eef3fb; outline: none; }
     .signature-placeholder {
       position: absolute; left: 8px; top: 50%; transform: translateY(-50%);
       font-size: 10.5px; color: #999; pointer-events: none;
     }
+    /* Same small solid-color/white-text/bold button convention as the
+       footer's .btn family, just lighter-weight for an inline utility
+       action rather than a page-level one. */
     .signature-clear-btn {
-      margin-top: 4px; font-size: 10px; padding: 3px 10px;
-      border: 1px solid #ccc; background: #f5f5f5; color: #333;
-      border-radius: 2px; cursor: pointer;
+      margin-top: 5px;
+      padding: 4px 12px;
+      font-family: inherit;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .3px;
+      border: none;
+      border-radius: 3px;
+      background: #6b6b6b;
+      color: #fff;
+      cursor: pointer;
+      transition: opacity .15s, transform .1s;
     }
-    .signature-clear-btn:hover { background: #ececea; }
+    .signature-clear-btn:hover { opacity: .85; }
+    .signature-clear-btn:active { transform: scale(.97); }
     .fuehrer-eigner-toggle {
       display: flex; align-items: center; gap: 5px;
       font-size: 10.5px; color: #444; margin-left: 14px; cursor: pointer;
@@ -616,7 +656,7 @@
   <div class="signature-block">
     <div class="owner-col-title">Unterschrift Bootsführer/in</div>
     <div class="signature-pad-wrap">
-      <canvas id="fuehrer-signatur-pad" class="signature-pad" width="600" height="170"></canvas>
+      <canvas id="fuehrer-signatur-pad" class="signature-pad" width="600" height="170" tabindex="0"></canvas>
       <span class="signature-placeholder" id="fuehrer-signatur-placeholder">Hier unterschreiben</span>
     </div>
     <button type="button" class="signature-clear-btn" onclick="clearSignaturePad()">Unterschrift löschen</button>
@@ -625,45 +665,52 @@
   <hr class="thin">
 
   <!-- WIRD VON OBMANN AUSGEFUELLT -->
-  <div class="section-title">Wird von Obmann ausgefüllt</div>
-  <div class="grid">
-    <div class="field-row">
-      <div class="field-label">Einsatz Nr.</div>
-      <div class="field-control"><input type="text" id="einsatz-nr" style="width:140px"></div>
-    </div>
-  </div>
-  <div class="billing-grid">
-    <div class="billing-row">
-      <span class="billing-label">Rettungsboot</span>
-      <input type="number" id="std-rettungsboot" min="0" step="0.25" placeholder="0"><span class="inline-label">Std. à Fr 150.00</span>
-    </div>
-    <div class="billing-row">
-      <span class="billing-label">Motorpumpe</span>
-      <input type="number" id="std-motorpumpe" min="0" step="0.25" placeholder="0"><span class="inline-label">Std. à Fr 35.00</span>
-    </div>
-    <div class="billing-row">
-      <span class="billing-label">Mannschaft</span>
-      <input type="number" id="std-mannschaft" min="0" step="0.25" placeholder="0"><span class="inline-label">Std. à Fr 70.00</span>
-    </div>
-    <div class="billing-row billing-total">
-      <span class="billing-label">Total</span>
-      <span id="billing-total-value">Fr. 0.00</span>
-    </div>
-  </div>
-  <div class="grid" style="margin-top:4px">
-    <div class="field-row">
-      <div class="field-label">Datum</div>
-      <div class="field-control"><input type="text" id="obmann-datum" placeholder="TT.MM.JJJJ" style="width:110px"></div>
-    </div>
-    <div class="field-row">
-      <div class="field-label">Obmann SRDP</div>
-      <div class="field-control">
-        <select id="obmann_crew" style="width:220px">
-          <option value="">Obmann auswählen</option>
-        </select>
+  <!-- Collapsible, folded by default (no "open" attribute): the crew filling
+       this out on scene doesn't need it open - only the Obmann does, later.
+       Plain <details>/<summary> - the fields inside stay in the DOM either
+       way, so nothing else (serializeForm/fillForm/resetForm, PDF export)
+       needs to care whether it's open or closed. -->
+  <details class="collapsible-section">
+    <summary class="section-title">Wird von Obmann ausgefüllt</summary>
+    <div class="grid">
+      <div class="field-row">
+        <div class="field-label">Einsatz Nr.</div>
+        <div class="field-control"><input type="text" id="einsatz-nr" style="width:140px"></div>
       </div>
     </div>
-  </div>
+    <div class="billing-grid">
+      <div class="billing-row">
+        <span class="billing-label">Rettungsboot</span>
+        <input type="number" id="std-rettungsboot" min="0" step="0.25" placeholder="0"><span class="inline-label">Std. à Fr 150.00</span>
+      </div>
+      <div class="billing-row">
+        <span class="billing-label">Motorpumpe</span>
+        <input type="number" id="std-motorpumpe" min="0" step="0.25" placeholder="0"><span class="inline-label">Std. à Fr 35.00</span>
+      </div>
+      <div class="billing-row">
+        <span class="billing-label">Mannschaft</span>
+        <input type="number" id="std-mannschaft" min="0" step="0.25" placeholder="0"><span class="inline-label">Std. à Fr 70.00</span>
+      </div>
+      <div class="billing-row billing-total">
+        <span class="billing-label">Total</span>
+        <span id="billing-total-value">Fr. 0.00</span>
+      </div>
+    </div>
+    <div class="grid" style="margin-top:4px">
+      <div class="field-row">
+        <div class="field-label">Datum</div>
+        <div class="field-control"><input type="text" id="obmann-datum" placeholder="TT.MM.JJJJ" style="width:110px"></div>
+      </div>
+      <div class="field-row">
+        <div class="field-label">Obmann SRDP</div>
+        <div class="field-control">
+          <select id="obmann_crew" style="width:220px">
+            <option value="">Obmann auswählen</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </details>
 
   <!-- FOOTER -->
   <div class="footer">
@@ -869,6 +916,11 @@
 
     function start(e) {
       e.preventDefault();
+      // preventDefault() above also suppresses the browser's default
+      // click-to-focus behavior, so trigger it explicitly - this drives the
+      // .signature-pad:focus style (blue border, same as every other active
+      // input on the page) reliably, including on iPad Safari.
+      canvas.focus();
       const [x, y] = pointFromEvent(e);
       currentStroke = [x, y];
       fuehrerSignaturStrokes.push(currentStroke);
@@ -1506,7 +1558,7 @@
     // same fix applied to the Pikettrapport signature line.
     hr(true);
     ensureSpace(9 + lineH + 5 + 4 * (lineH + 4) + lineH + 4);
-    sectionTitle('Wird von Obmann ausgefüllt');
+    sectionTitle('Kostenabrechnung');
     fieldRow('Einsatz Nr.', val('einsatz-nr') || '-');
 
     function billingRow(label, hoursId, rate) {
