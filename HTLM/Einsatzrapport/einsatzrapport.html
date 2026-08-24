@@ -302,6 +302,20 @@
     }
     .billing-row:last-child { border-bottom: none; }
     .billing-label { min-width: 150px; font-size: 11px; color: #333; }
+    /* Hours entry - same idea as Einsatzbeginn/Einsatzende's flatpickr time
+       picker (a steppable H : MM pair), built from two native number
+       spinners instead: flatpickr's time picker is a clock-time control
+       capped at 23 hours, but these are durations that can legitimately run
+       past 24h, so the hour segment has no max. */
+    .duration-input { display: inline-flex; align-items: center; gap: 2px; }
+    .duration-input input.duration-h { width: 50px; text-align: right; }
+    .duration-input input.duration-m { width: 42px; text-align: left; }
+    .duration-sep { font-size: 11px; color: #555; }
+    /* Per-line total - margin-left:auto pushes it flush to the row's right
+       edge; since every .billing-row shares the same width, this lines the
+       three line totals and the grand Total's value up in one right-aligned
+       column, exactly like the "Fr X.XX" column of a real invoice. */
+    .billing-line-total { margin-left: auto; font-weight: 600; white-space: nowrap; }
     .billing-total { font-weight: 700; }
     .billing-total .billing-label { color: #1a1a1a; }
     #billing-total-value { font-size: 12px; }
@@ -397,6 +411,13 @@
       .footer { flex-direction: column; align-items: stretch; gap: 8px; }
       .sig-row { order: -1; }
       .footer-buttons { justify-content: center; flex-wrap: wrap; }
+
+      /* Kostenabrechnung billing rows: label + hh:mm + rate + line total is
+         too much for one line at this width - let the line total wrap onto
+         its own line (margin-left:auto still right-aligns it there) instead
+         of getting squeezed/clipped. */
+      .billing-row { flex-wrap: wrap; row-gap: 2px; }
+      .billing-label { min-width: 110px; }
     }
 
     /* ---------------------------------------------------- PDF EXPORT ---------------------------------------------------- */
@@ -681,19 +702,37 @@
     <div class="billing-grid">
       <div class="billing-row">
         <span class="billing-label">Rettungsboot</span>
-        <input type="number" id="std-rettungsboot" min="0" step="0.25" placeholder="0"><span class="inline-label">Std. à Fr 150.00</span>
+        <span class="duration-input">
+          <input type="number" id="std-rettungsboot-h" class="duration-h" min="0" placeholder="0">
+          <span class="duration-sep">:</span>
+          <input type="number" id="std-rettungsboot-m" class="duration-m" min="0" max="59" placeholder="00">
+        </span>
+        <span class="inline-label">Std. à Fr 150.00</span>
+        <span class="billing-line-total" id="billing-line-rettungsboot">Fr. 0.00</span>
       </div>
       <div class="billing-row">
         <span class="billing-label">Motorpumpe</span>
-        <input type="number" id="std-motorpumpe" min="0" step="0.25" placeholder="0"><span class="inline-label">Std. à Fr 35.00</span>
+        <span class="duration-input">
+          <input type="number" id="std-motorpumpe-h" class="duration-h" min="0" placeholder="0">
+          <span class="duration-sep">:</span>
+          <input type="number" id="std-motorpumpe-m" class="duration-m" min="0" max="59" placeholder="00">
+        </span>
+        <span class="inline-label">Std. à Fr 35.00</span>
+        <span class="billing-line-total" id="billing-line-motorpumpe">Fr. 0.00</span>
       </div>
       <div class="billing-row">
         <span class="billing-label">Mannschaft</span>
-        <input type="number" id="std-mannschaft" min="0" step="0.25" placeholder="0"><span class="inline-label">Std. à Fr 70.00</span>
+        <span class="duration-input">
+          <input type="number" id="std-mannschaft-h" class="duration-h" min="0" placeholder="0">
+          <span class="duration-sep">:</span>
+          <input type="number" id="std-mannschaft-m" class="duration-m" min="0" max="59" placeholder="00">
+        </span>
+        <span class="inline-label">Std. à Fr 70.00</span>
+        <span class="billing-line-total" id="billing-line-mannschaft">Fr. 0.00</span>
       </div>
       <div class="billing-row billing-total">
         <span class="billing-label">Total</span>
-        <span id="billing-total-value">Fr. 0.00</span>
+        <span id="billing-total-value" class="billing-line-total">Fr. 0.00</span>
       </div>
     </div>
     <div class="grid" style="margin-top:4px">
@@ -1026,17 +1065,56 @@
 
   /* ---------------------------------------------------- OBMANN: BILLING TOTAL ---------------------------------------------------- */
   const BILLING_RATES = { 'std-rettungsboot': 150, 'std-motorpumpe': 35, 'std-mannschaft': 70 };
+  // Hours are entered via a pair of number spinners (id + "-h" / id + "-m") -
+  // the same steppable H : MM idea as Einsatzbeginn/Einsatzende's flatpickr
+  // time picker, but flatpickr's picker is a clock-time control (0-23h), and
+  // these are durations that can legitimately run past 24h, so there's no
+  // cap on the hour spinner. Minutes clamp to 0-59 regardless of what's
+  // typed (the field's own max is just a UI hint, not enforced by the
+  // browser), so a stray "75" typed into minutes can't silently inflate cost.
+  const BILLING_LINE_TOTAL_IDS = {
+    'std-rettungsboot': 'billing-line-rettungsboot',
+    'std-motorpumpe': 'billing-line-motorpumpe',
+    'std-mannschaft': 'billing-line-mannschaft',
+  };
+  function billingHoursParts(id) {
+    const hEl = document.getElementById(id + '-h');
+    const mEl = document.getElementById(id + '-m');
+    const h = hEl ? parseInt(hEl.value, 10) : NaN;
+    const m = mEl ? parseInt(mEl.value, 10) : NaN;
+    return {
+      hours: isNaN(h) ? 0 : Math.max(0, h),
+      minutes: isNaN(m) ? 0 : Math.min(59, Math.max(0, m)),
+    };
+  }
+  function billingHoursDecimal(id) {
+    const { hours, minutes } = billingHoursParts(id);
+    return hours + minutes / 60;
+  }
+  // Combined "H:MM" text, for printing in the PDF (the two spinners are a
+  // page-only input convenience; the PDF row still reads as one duration).
+  function billingHoursText(id) {
+    const { hours, minutes } = billingHoursParts(id);
+    return `${hours}:${String(minutes).padStart(2, '0')}`;
+  }
+  function formatFr(amount) {
+    return 'Fr. ' + amount.toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
   function updateBillingTotal() {
     let total = 0;
     Object.entries(BILLING_RATES).forEach(([id, rate]) => {
-      const v = parseFloat(document.getElementById(id).value);
-      if (!isNaN(v)) total += v * rate;
+      const lineTotal = billingHoursDecimal(id) * rate;
+      total += lineTotal;
+      const lineEl = document.getElementById(BILLING_LINE_TOTAL_IDS[id]);
+      if (lineEl) lineEl.textContent = formatFr(lineTotal);
     });
-    document.getElementById('billing-total-value').textContent =
-      'Fr. ' + total.toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    document.getElementById('billing-total-value').textContent = formatFr(total);
   }
   Object.keys(BILLING_RATES).forEach(id => {
-    document.getElementById(id).addEventListener('input', updateBillingTotal);
+    ['-h', '-m'].forEach(suffix => {
+      const el = document.getElementById(id + suffix);
+      if (el) el.addEventListener('input', updateBillingTotal);
+    });
   });
 
   function resetForm() {
@@ -1287,8 +1365,7 @@
   function billingTotalValue() {
     let total = 0;
     Object.entries(BILLING_RATES).forEach(([id, rate]) => {
-      const v = parseFloat(val(id));
-      if (!isNaN(v)) total += v * rate;
+      total += billingHoursDecimal(id) * rate;
     });
     return total;
   }
@@ -1561,14 +1638,21 @@
     sectionTitle('Kostenabrechnung');
     fieldRow('Einsatz Nr.', val('einsatz-nr') || '-');
 
+    // hoursId is the base id of a pair of number-spinner inputs (id + "-h" /
+    // id + "-m", see billingHoursParts/billingHoursText above) - printed as
+    // one combined H:MM duration. The line total prints right-aligned to the
+    // content's right edge - the grand Total below does the same, so both
+    // columns line up exactly like the on-screen table.
     function billingRow(label, hoursId, rate) {
       pdf.setFont('LiberationSans', 'normal');
       pdf.setFontSize(9);
-      const hours = val(hoursId) || '0';
+      const hoursText = billingHoursText(hoursId);
+      const lineTotal = billingHoursDecimal(hoursId) * rate;
       pdf.setTextColor(51, 51, 51);
       pdf.text(label, marginX, y);
       pdf.setTextColor(...ink);
-      pdf.text(`${hours} Std. à Fr ${rate.toFixed(2)}`, marginX + 55, y);
+      pdf.text(`${hoursText} Std. à Fr ${rate.toFixed(2)}`, marginX + 55, y);
+      pdf.text(`Fr. ${lineTotal.toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageW - marginX, y, { align: 'right' });
       y += lineH + 1.5;
     }
     y += 1;
@@ -1579,7 +1663,7 @@
     pdf.setFontSize(9);
     pdf.setTextColor(...ink);
     pdf.text('Total', marginX, y);
-    pdf.text(`Fr. ${billingTotalValue().toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, marginX + 55, y);
+    pdf.text(`Fr. ${billingTotalValue().toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageW - marginX, y, { align: 'right' });
     y += lineH + 4;
 
     fieldRow('Datum', val('obmann-datum') || '-');
