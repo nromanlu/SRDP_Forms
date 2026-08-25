@@ -1436,6 +1436,51 @@
       y += lines.length * lineH + 1;
     }
 
+    // A labelled, bordered signature box - shared by every signature line in
+    // this PDF. Pass `strokes` (the vector pen-stroke points captured by a
+    // signature pad, see the SIGNATURE PAD section in the form JS) to draw
+    // them scaled into the box as real vector lines; omit it (or pass an
+    // empty array) for a signature that only exists in the PDF - a blank box
+    // meant to be signed by hand once printed, with no on-screen capture.
+    // rightLabel/rightValue (optional) print to the right of the box, right-
+    // aligned to the page's content edge, as one "label: value" line whose
+    // baseline sits on the box's bottom edge - used to put "Protokollführer/
+    // -in: <name>" alongside the signature instead of as its own row
+    // underneath.
+    function signatureBox(label, strokes, rightLabel, rightValue) {
+      const boxW = 70, boxH = 19.8;
+      ensureSpace(lineH + boxH + 6);
+      pdf.setFont('LiberationSans', 'bold');
+      pdf.setFontSize(9);
+      pdf.setTextColor(...ink);
+      pdf.text(label, marginX, y);
+      y += lineH + 1;
+      const boxTopY = y;
+      pdf.setDrawColor(...lightGray);
+      pdf.setLineWidth(0.3);
+      pdf.rect(marginX, boxTopY, boxW, boxH, 'D');
+      if (strokes && strokes.length) {
+        const scaleX = boxW / 600, scaleY = boxH / 170;
+        pdf.setDrawColor(...ink);
+        pdf.setLineWidth(0.35);
+        strokes.forEach(stroke => {
+          for (let i = 2; i < stroke.length; i += 2) {
+            pdf.line(
+              marginX + stroke[i - 2] * scaleX, boxTopY + stroke[i - 1] * scaleY,
+              marginX + stroke[i] * scaleX, boxTopY + stroke[i + 1] * scaleY
+            );
+          }
+        });
+      }
+      if (rightLabel) {
+        pdf.setFont('LiberationSans', 'normal');
+        pdf.setFontSize(9);
+        pdf.setTextColor(...ink);
+        pdf.text(`${rightLabel}: ${rightValue || '-'}`, pageW - marginX, boxTopY + boxH, { align: 'right' });
+      }
+      y = boxTopY + boxH + 4;
+    }
+
     // ---- Header ----
     const [srdpLogo, gemeindeLogo] = await Promise.all([
       loadImageAsDataURL('../Logos/SRDP.png'),
@@ -1597,36 +1642,10 @@
     // Drawn as real vector line segments from the captured pen-stroke points
     // (see the SIGNATURE PAD section in the form JS for why they're stored
     // as points, not a raster image) - consistent with the rest of this
-    // report's vector-only PDF output.
-    const sigBoxW = 70, sigBoxH = 19.8;
-    ensureSpace(lineH + sigBoxH + 6);
-    pdf.setFont('LiberationSans', 'bold');
-    pdf.setFontSize(9);
-    pdf.setTextColor(...ink);
-    pdf.text('Unterschrift Bootsführer/in', marginX, y);
-    y += lineH + 1;
-    pdf.setDrawColor(...lightGray);
-    pdf.setLineWidth(0.3);
-    pdf.rect(marginX, y, sigBoxW, sigBoxH, 'D');
-    if (fuehrerSignaturStrokes.length) {
-      const scaleX = sigBoxW / 600, scaleY = sigBoxH / 170;
-      pdf.setDrawColor(...ink);
-      pdf.setLineWidth(0.35);
-      fuehrerSignaturStrokes.forEach(stroke => {
-        for (let i = 2; i < stroke.length; i += 2) {
-          pdf.line(
-            marginX + stroke[i - 2] * scaleX, y + stroke[i - 1] * scaleY,
-            marginX + stroke[i] * scaleX, y + stroke[i + 1] * scaleY
-          );
-        }
-      });
-    }
-    y += sigBoxH + 4;
+    // report's vector-only PDF output. Protokollführer/-in prints alongside
+    // it (right-aligned) instead of as its own row underneath.
+    signatureBox('Unterschrift Bootsführer/in', fuehrerSignaturStrokes, 'Protokollführer/-in', val('sig_crew') || '-');
     hr(false);
-
-    // ---- Protokollführer/-in ----
-    fieldRow('Protokollführer/-in', val('sig_crew') || '-');
-    y += 0.5;
 
     // ---- Wird von Obmann ausgefuellt ----
     // Reserve room for the WHOLE section (title + fields + billing table + closing
