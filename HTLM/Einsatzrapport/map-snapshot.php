@@ -36,11 +36,11 @@ const GEOAPIFY_API_KEY = '5d0494d021a84a36b381c240d7b37466';
 // ---------------------------------------------------------------------
 const MAP_WIDTH  = 640;
 const MAP_HEIGHT = 420;
-const MAP_ZOOM   = 15;
+const MAP_ZOOM   = 13;
 // "osm-carto" is Geoapify's raster style based on the same OSM Carto
 // renderer that powers openstreetmap.org itself - the closest match to
 // the classic OpenStreetMap look, unlike their various vector styles.
-const MAP_STYLE  = 'osm-carto';
+const MAP_STYLE  = 'maptiler-3d';
 const MARKER_COLOR = '%23e63329'; // URL-encoded #e63329 (red)
 
 function respond_error($message, $httpCode = 400) {
