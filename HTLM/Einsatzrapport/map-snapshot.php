@@ -36,7 +36,7 @@ const GEOAPIFY_API_KEY = '5d0494d021a84a36b381c240d7b37466';
 // ---------------------------------------------------------------------
 const MAP_WIDTH  = 640;
 const MAP_HEIGHT = 420;
-const MAP_ZOOM   = 13;
+const MAP_ZOOM   = 10;
 // "osm-carto" is Geoapify's raster style based on the same OSM Carto
 // renderer that powers openstreetmap.org itself - the closest match to
 // the classic OpenStreetMap look, unlike their various vector styles.
