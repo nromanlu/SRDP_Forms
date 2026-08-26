@@ -46,6 +46,14 @@ const LOCKOUT_SECONDS      = 300; // 5 minutes
 // lockout above, so it's its own constant rather than reusing MAX_FAILED_ATTEMPTS.
 const SELECT_MAX_FAILED_ATTEMPTS = 3;
 
+// When a signature is auto-deleted, signature-verify-pin.php issues a
+// one-time token so the client can hand the current Einsatzrapport PDF to
+// signature-notify-deletion.php, which emails it to the admin address. The
+// token expires after this many seconds and can only be used once, so that
+// endpoint can't be used to send arbitrary emails - only right after a real
+// deletion.
+const NOTIFY_TOKEN_TTL_SECONDS = 600; // 10 minutes
+
 // Where stored signatures live. Protected from direct web access by
 // signatures/.htaccess (Apache) - always go through the PHP endpoints below,
 // never fetch a .json file in there directly.

@@ -807,7 +807,7 @@
         <div class="field-label">Bearbeitet von</div>
         <div class="field-control">
           <select id="obmann_crew" style="width:220px">
-            <option value="">Person auswählen</option>
+            <option value="">ADS auswählen</option>
           </select>
           <div id="obmann-crew-status" class="field-hint"></div>
         </div>
@@ -1047,13 +1047,19 @@
           select.dataset.confirmedValue = select.value;
           setObmannCrewStatus(`Bestätigt: ${name}.`, 'ok');
         } else if (result.deleted) {
-          // 5th wrong attempt - the signature no longer exists server-side;
-          // drop it from the dropdown too and revert the selection.
+          // Final wrong attempt - the signature no longer exists server-side;
+          // drop it from the dropdown too and revert the selection. The
+          // person here is never told it was deleted, only that 0 attempts
+          // are left (same wording as the countdown) - the admin is told
+          // separately, by email, in the background.
           await loadSignatureNames();
           populateObmannCrewSelect();
           select.value = select.dataset.confirmedValue = '';
           updateSelectPlaceholderState(select);
-          setObmannCrewStatus(result.error || 'PIN falsch. Signatur automatisch gelöscht.', 'err');
+          setObmannCrewStatus(result.error || 'PIN falsch. Noch 0 Versuch(e).', 'err');
+          if (result.notifyToken) {
+            notifySignatureDeletion(result.notifyToken);
+          }
         } else {
           select.value = select.dataset.confirmedValue;
           updateSelectPlaceholderState(select);
@@ -1065,6 +1071,30 @@
         setObmannCrewStatus('Verbindungsfehler. Bitte erneut versuchen.', 'err');
       }
     });
+  }
+
+  // Best-effort admin notification for a just-auto-deleted signature (see
+  // signature-notify-deletion.php). Re-uses the same generatePDF() as
+  // "Absenden" / "PDF herunterladen" to attach the Einsatzrapport in
+  // whatever state it's currently filled in, together with the one-time
+  // token signature-verify-pin.php just issued. Runs silently in the
+  // background - the person filling the form is never told about this, so
+  // any failure here is only logged to the console, never surfaced to them.
+  async function notifySignatureDeletion(token) {
+    try {
+      const pdf = await generatePDF();
+      const pdfBlob = pdf.output('blob');
+      const formData = new FormData();
+      formData.append('pdf', pdfBlob, buildFilename());
+      formData.append('token', token);
+      const res = await fetch('signature-notify-deletion.php', { method: 'POST', body: formData });
+      const result = await res.json().catch(() => null);
+      if (!result || !result.success) {
+        console.error('signature-notify-deletion.php meldete einen Fehler:', result && result.error);
+      }
+    } catch (e) {
+      console.error('Benachrichtigung über gelöschte Signatur konnte nicht gesendet werden:', e);
+    }
   }
 
   /* ---------------------------------------------------- EINSATZBERICHT: AUTO-EXPANDING TEXTAREA ---------------------------------------------------- */
