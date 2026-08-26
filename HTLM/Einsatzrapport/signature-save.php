@@ -7,7 +7,8 @@
  * "Unterschrift hinzufügen" button, after the user has entered a name,
  * drawn a signature, and confirmed a PIN in the on-page modal.
  *
- * Body (JSON): { name: string, pin: "1234", strokes: [[x0,y0,x1,y1,...], ...] }
+ * Body (JSON): { name: string, rank: string, pin: "123456", strokes: [[x0,y0,x1,y1,...], ...] }
+ * rank is optional but, if present, must be one of ALLOWED_RANKS.
  *
  * - New name -> creates the record, PIN is hashed and becomes that
  *   signature's write-protection going forward.
@@ -23,11 +24,15 @@ require_post();
 $data = read_json_body();
 
 $name    = isset($data['name']) ? trim((string) $data['name']) : '';
+$rank    = isset($data['rank']) ? trim((string) $data['rank']) : '';
 $pin     = isset($data['pin']) ? (string) $data['pin'] : '';
 $strokes = isset($data['strokes']) ? $data['strokes'] : null;
 
 if ($name === '') {
     respond(false, 'Name fehlt.', [], 400);
+}
+if ($rank !== '' && !in_array($rank, ALLOWED_RANKS, true)) {
+    respond(false, 'Ungültiger Rang.', [], 400);
 }
 if (!preg_match('/^\d{' . PIN_LENGTH . '}$/', $pin)) {
     respond(false, 'PIN muss genau ' . PIN_LENGTH . ' Ziffern haben.', [], 400);
@@ -70,11 +75,13 @@ if ($existing !== null) {
     lockout_register_success($existing);
     $record = $existing;
     $record['name']      = $name;
+    $record['rank']      = $rank;
     $record['strokes']   = $strokes;
     $record['updatedAt'] = gmdate('Y-m-d H:i:s') . ' UTC';
 } else {
     $record = [
         'name'           => $name,
+        'rank'           => $rank,
         'slug'           => $slug,
         'pinHash'        => password_hash($pin, PASSWORD_DEFAULT),
         'strokes'        => $strokes,

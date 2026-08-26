@@ -63,7 +63,8 @@
     /* ---------------------------------------------------- GENERIC INPUTS ---------------------------------------------------- */
     input[type="text"],
     input[type="password"],
-    input[type="tel"] {
+    input[type="tel"],
+    select {
       border: none;
       border-bottom: 1.5px solid #aaa;
       background: #f7f7f5;
@@ -76,10 +77,16 @@
       border-radius: 2px 2px 0 0;
       width: 100%;
     }
-    input:focus { border-color: #1a4fa0; background: #eef3fb; }
+    input:focus, select:focus { border-color: #1a4fa0; background: #eef3fb; }
 
     .field-row { margin-bottom: 12px; }
     .field-label { font-weight: 700; font-size: 10.5px; margin-bottom: 3px; }
+
+    /* Name + Rang side by side - Rang narrower since its values are short. */
+    .name-rank-row { display: flex; gap: 12px; }
+    .name-rank-row .field-row { margin-bottom: 12px; }
+    .name-rank-row .field-row:first-child { flex: 2; }
+    .name-rank-row .field-row:last-child { flex: 1; min-width: 130px; }
 
     /* ---------------------------------------------------- SIGNATURE PAD ---------------------------------------------------- */
     /* Same vector-pen-stroke pad as einsatzrapport.html's Bootsführer/in
@@ -153,6 +160,12 @@
     .signature-row canvas { border: 1px solid #ddd; border-radius: 2px; background: #fff; flex-shrink: 0; }
     .signature-row-info { flex: 1; min-width: 0; }
     .signature-row-name { font-weight: 700; font-size: 11.5px; }
+    .signature-row-rank {
+      display: inline-block; margin-left: 7px;
+      font-weight: 600; font-size: 9px; letter-spacing: .2px; text-transform: uppercase;
+      color: #1a4fa0; background: #eef3fb; border-radius: 3px; padding: 2px 6px;
+      vertical-align: middle;
+    }
     .signature-row-date { font-size: 10px; color: #888; margin-top: 1px; }
     .signature-list-empty { font-size: 11px; color: #888; font-style: italic; }
 
@@ -179,6 +192,7 @@
     @media (max-width: 480px) {
       .page { padding: 16px 14px 20px; }
       .signature-row { flex-wrap: wrap; }
+      .name-rank-row { flex-direction: column; gap: 0; }
     }
   </style>
 </head>
@@ -199,9 +213,21 @@
   <div class="section-title">Unterschrift hinzufügen</div>
   <p class="section-note">Name eingeben, unterschreiben und mit einer 6-stelligen PIN schützen. Wird derselbe Name später erneut hinzugefügt, ist dafür die ursprüngliche PIN nötig.</p>
 
-  <div class="field-row">
-    <div class="field-label">Name</div>
-    <input type="text" id="sig-name" placeholder="Vorname Nachname">
+  <div class="name-rank-row">
+    <div class="field-row">
+      <div class="field-label">Name</div>
+      <input type="text" id="sig-name" placeholder="Vorname Nachname">
+    </div>
+    <div class="field-row">
+      <div class="field-label">Rang</div>
+      <select id="sig-rank">
+        <option value="">Rang wählen</option>
+        <option value="Obmann">Obmann</option>
+        <option value="Obmann Stv.">Obmann Stv.</option>
+        <option value="Pikettführer">Pikettführer</option>
+        <option value="Seeretter">Seeretter</option>
+      </select>
+    </div>
   </div>
 
   <div class="field-row">
@@ -408,6 +434,7 @@
   /* ---------------------------------------------------- ADD SIGNATURE ---------------------------------------------------- */
   async function addSignature() {
     const name = document.getElementById('sig-name').value.trim();
+    const rank = document.getElementById('sig-rank').value;
     if (!name) { setStatus('add-status', 'Bitte einen Namen eingeben.', 'err'); return; }
     if (signaturStrokes.length === 0) { setStatus('add-status', 'Bitte zuerst unterschreiben.', 'err'); return; }
 
@@ -421,12 +448,13 @@
       const res = await fetch('signature-save.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, pin, strokes: signaturStrokes }),
+        body: JSON.stringify({ name, rank, pin, strokes: signaturStrokes }),
       });
       const result = await res.json();
       if (result.success) {
         setStatus('add-status', `Unterschrift von "${name}" gespeichert.`, 'ok');
         document.getElementById('sig-name').value = '';
+        document.getElementById('sig-rank').value = '';
         clearSignaturePad();
         // If the manage-list is currently unlocked, refresh it so the new/updated entry shows immediately.
         if (adminPassword) refreshSignatureList();
@@ -515,6 +543,12 @@
       const nameEl = document.createElement('div');
       nameEl.className = 'signature-row-name';
       nameEl.textContent = sig.name;
+      if (sig.rank) {
+        const rankEl = document.createElement('span');
+        rankEl.className = 'signature-row-rank';
+        rankEl.textContent = sig.rank;
+        nameEl.appendChild(rankEl);
+      }
       const dateEl = document.createElement('div');
       dateEl.className = 'signature-row-date';
       dateEl.textContent = sig.updatedAt ? 'Aktualisiert: ' + sig.updatedAt : '';

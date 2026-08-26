@@ -29,6 +29,7 @@ foreach (glob(SIGNATURES_DIR . '/*.json') as $file) {
     $signatures[] = [
         'id'        => $slug,
         'name'      => $record['name'] ?? $slug,
+        'rank'      => $record['rank'] ?? '',
         'updatedAt' => $record['updatedAt'] ?? '',
         'strokes'   => $record['strokes'] ?? [],
     ];

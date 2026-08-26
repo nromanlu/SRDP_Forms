@@ -28,6 +28,11 @@ const ADMIN_PASSWORD_HASH = '$2y$12$by3AokYyyN0pv3JReisF3OQH9Nq7CV4dpFSOPZZItjey
 // PIN length required when adding/overwriting a stored signature.
 const PIN_LENGTH = 6;
 
+// Ranks selectable in the "Rang" dropdown next to the name field. Kept as a
+// server-side whitelist (not just an HTML <select>) so signature-save.php
+// can reject anything else rather than trusting whatever the client sends.
+const ALLOWED_RANKS = ['Obmann', 'Obmann Stv.', 'Pikettführer', 'Seeretter'];
+
 // After this many wrong PINs (per stored signature) or wrong admin
 // passwords (globally), further attempts are locked out for LOCKOUT_SECONDS.
 // There's no database here, so this is tracked in small JSON files.
