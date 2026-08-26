@@ -1,0 +1,5 @@
+# Blocks all direct web access to everything in this folder (the stored
+# signature JSON files, including PIN hashes, and the admin lockout state).
+# Always go through signature-save.php / signature-admin-list.php /
+# signature-delete.php in the parent folder instead.
+Require all denied

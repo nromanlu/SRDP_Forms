@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unterschriften verwalten - Seerettungsdienst Pfäffikon SZ</title>
+  <!--
+    Standalone tool, deployed in the SAME folder as einsatzrapport.html but
+    never linked from it (or from anywhere else) - reachable only by anyone
+    who has this exact address. Manages a small library of named, PIN-
+    protected signatures (signature-save.php / signature-admin-list.php /
+    signature-delete.php + the "signatures" folder), independent of the
+    Einsatzrapport form and its PDF export.
+  -->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&family=Source+Serif+4:wght@400;600&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Source Sans 3', sans-serif;
+      font-size: 11px;
+      background: #f2f2ec;
+      color: #1a1a1a;
+      padding: 18px 16px 28px;
+    }
+
+    .page {
+      max-width: 620px;
+      margin: 0 auto;
+      background: #fff;
+      border: 1px solid #ccc;
+      padding: 20px 26px 24px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.08);
+    }
+
+    /* ---------------------------------------------------- HEADER ---------------------------------------------------- */
+    .header { display: flex; align-items: center; gap: 12px; margin-bottom: 17px; }
+    .header-logo { width: 60px; height: 60px; flex-shrink: 0; }
+    .header-logo img { width: 100%; height: 100%; object-fit: contain; }
+    .header-title h1 {
+      font-family: 'Source Serif 4', serif;
+      font-size: 24px;
+      font-weight: 600;
+      line-height: 1.1;
+      letter-spacing: -.4px;
+    }
+    .header-title p { font-size: 13px; color: #555; margin-top: 2px; }
+
+    hr { border: none; border-top: 2px solid #1a1a1a; margin: 0 0 14px; }
+    hr.thin { border-top: 1px solid #ccc; margin: 16px 0; }
+
+    .section-title {
+      font-weight: 700;
+      font-size: 11px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      color: #1a1a1a;
+    }
+    .section-note { font-size: 10.5px; color: #777; margin: -4px 0 12px; }
+
+    /* ---------------------------------------------------- GENERIC INPUTS ---------------------------------------------------- */
+    input[type="text"],
+    input[type="password"],
+    input[type="tel"] {
+      border: none;
+      border-bottom: 1.5px solid #aaa;
+      background: #f7f7f5;
+      padding: 5px 7px;
+      font-family: inherit;
+      font-size: 12px;
+      color: #1a1a1a;
+      outline: none;
+      transition: border-color .15s;
+      border-radius: 2px 2px 0 0;
+      width: 100%;
+    }
+    input:focus { border-color: #1a4fa0; background: #eef3fb; }
+
+    .field-row { margin-bottom: 12px; }
+    .field-label { font-weight: 700; font-size: 10.5px; margin-bottom: 3px; }
+
+    /* ---------------------------------------------------- SIGNATURE PAD ---------------------------------------------------- */
+    /* Same vector-pen-stroke pad as einsatzrapport.html's Bootsführer/in
+       signature (see the JS below), styled like that page's .freetext-area
+       "box you write/draw into" convention. */
+    .signature-pad-wrap { position: relative; max-width: 340px; margin-top: 3px; }
+    .signature-pad {
+      display: block; width: 100%; height: 100px;
+      border: 1.5px solid #aaa; border-radius: 2px; background: #f7f7f5;
+      touch-action: none; cursor: crosshair;
+      transition: border-color .15s;
+    }
+    .signature-pad:focus { border-color: #1a4fa0; background: #eef3fb; outline: none; }
+    .signature-placeholder {
+      position: absolute; left: 8px; top: 50%; transform: translateY(-50%);
+      font-size: 10.5px; color: #999; pointer-events: none;
+    }
+    .signature-clear-btn {
+      margin-top: 6px;
+      padding: 4px 12px;
+      font-family: inherit;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .3px;
+      border: none;
+      border-radius: 3px;
+      background: #6b6b6b;
+      color: #fff;
+      cursor: pointer;
+      transition: opacity .15s, transform .1s;
+    }
+    .signature-clear-btn:hover { opacity: .85; }
+    .signature-clear-btn:active { transform: scale(.97); }
+
+    /* ---------------------------------------------------- BUTTONS ---------------------------------------------------- */
+    .btn {
+      padding: 7px 18px;
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 700;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      letter-spacing: .3px;
+      transition: opacity .15s, transform .1s;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn:disabled { opacity: .55; cursor: default; }
+    .btn-primary { background: #2a7a2a; color: #fff; margin-top: 12px; }
+    .btn-primary:hover { opacity: .88; }
+    .btn-secondary { background: #6b6b6b; color: #fff; }
+    .btn-secondary:hover { opacity: .85; }
+    .btn-danger { background: #c8151b; color: #fff; }
+    .btn-danger:hover { opacity: .85; }
+
+    .status-msg { margin-top: 10px; font-size: 11px; min-height: 14px; }
+    .status-msg.ok { color: #2a7a2a; font-weight: 600; }
+    .status-msg.err { color: #c8151b; font-weight: 600; }
+
+    /* ---------------------------------------------------- MANAGE SECTION ---------------------------------------------------- */
+    .admin-unlock-row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+    .admin-unlock-row .field-row { flex: 1; min-width: 160px; margin-bottom: 0; }
+    .admin-unlock-row .btn { height: 30px; }
+
+    .signature-list { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+    .signature-row {
+      display: flex; align-items: center; gap: 12px;
+      border: 1px solid #ddd; border-radius: 4px; padding: 8px 10px;
+      background: #fafaf8;
+    }
+    .signature-row canvas { border: 1px solid #ddd; border-radius: 2px; background: #fff; flex-shrink: 0; }
+    .signature-row-info { flex: 1; min-width: 0; }
+    .signature-row-name { font-weight: 700; font-size: 11.5px; }
+    .signature-row-date { font-size: 10px; color: #888; margin-top: 1px; }
+    .signature-list-empty { font-size: 11px; color: #888; font-style: italic; }
+
+    /* ---------------------------------------------------- MODALS ---------------------------------------------------- */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45);
+      align-items: center; justify-content: center; z-index: 100; padding: 16px;
+    }
+    .modal-overlay.visible { display: flex; }
+    .modal-box {
+      background: #fff; border-radius: 6px; padding: 20px 22px; max-width: 300px; width: 100%;
+      box-shadow: 0 8px 30px rgba(0,0,0,.25);
+    }
+    .modal-title { font-weight: 700; font-size: 13px; margin-bottom: 10px; }
+    .modal-text { font-size: 11.5px; color: #444; margin-bottom: 12px; line-height: 1.4; }
+    .modal-box input[type="tel"] {
+      font-size: 20px; letter-spacing: 6px; text-align: center; padding: 8px 5px;
+    }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+    .modal-error { color: #c8151b; font-size: 10.5px; margin-top: 8px; min-height: 13px; }
+
+    .version-note { text-align: right; font-size: 9px; color: #999; margin-top: 16px; }
+
+    @media (max-width: 480px) {
+      .page { padding: 16px 14px 20px; }
+      .signature-row { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div class="header-logo"><img src="../Logos/SRDP.png" alt="SRDP Logo"></div>
+    <div class="header-title">
+      <h1>Unterschriften</h1>
+      <p>Seerettungsdienst Pfäffikon SZ</p>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- ADD SIGNATURE -->
+  <div class="section-title">Unterschrift hinzufügen</div>
+  <p class="section-note">Name eingeben, unterschreiben und mit einer 6-stelligen PIN schützen. Wird derselbe Name später erneut hinzugefügt, ist dafür die ursprüngliche PIN nötig.</p>
+
+  <div class="field-row">
+    <div class="field-label">Name</div>
+    <input type="text" id="sig-name" placeholder="Vorname Nachname">
+  </div>
+
+  <div class="field-row">
+    <div class="field-label">Unterschrift</div>
+    <div class="signature-pad-wrap">
+      <canvas id="signatur-pad" class="signature-pad" width="600" height="170" tabindex="0"></canvas>
+      <span class="signature-placeholder" id="signatur-placeholder">Hier unterschreiben</span>
+    </div>
+    <button type="button" class="signature-clear-btn" onclick="clearSignaturePad()">Unterschrift löschen</button>
+  </div>
+
+  <button type="button" class="btn btn-primary" id="addBtn" onclick="addSignature()">Unterschrift hinzufügen</button>
+  <div class="status-msg" id="add-status"></div>
+
+  <hr class="thin">
+
+  <!-- MANAGE SIGNATURES -->
+  <div class="section-title">Signaturen verwalten</div>
+  <p class="section-note">Nur mit Admin-Passwort einsehbar. Damit können gespeicherte Unterschriften endgültig gelöscht werden.</p>
+
+  <div class="admin-unlock-row" id="admin-unlock-row">
+    <div class="field-row">
+      <div class="field-label">Admin-Passwort</div>
+      <input type="password" id="admin-password" placeholder="Passwort" autocomplete="off">
+    </div>
+    <button type="button" class="btn btn-secondary" id="unlockBtn" onclick="unlockAdmin()">Entsperren</button>
+  </div>
+  <div class="status-msg" id="admin-status"></div>
+
+  <div class="signature-list" id="signature-list" style="display:none;"></div>
+
+  <div class="version-note">Unterschriften-Verwaltung V1.0 / srdp.ch</div>
+</div>
+
+<!-- PIN MODAL -->
+<div class="modal-overlay" id="pin-modal">
+  <div class="modal-box">
+    <div class="modal-title">PIN eingeben</div>
+    <div class="modal-text">6-stellige PIN für diese Unterschrift. Beim ersten Speichern unter diesem Namen wird sie neu festgelegt; danach schützt sie diesen Eintrag vor Überschreiben.</div>
+    <input type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="6" id="pin-input" placeholder="••••••" autocomplete="off">
+    <div class="modal-error" id="pin-modal-error"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" onclick="closePinModal(null)">Abbrechen</button>
+      <button type="button" class="btn btn-primary" style="margin-top:0" onclick="submitPinModal()">Bestätigen</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM DELETE MODAL -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal-box">
+    <div class="modal-title">Unterschrift löschen?</div>
+    <div class="modal-text" id="confirm-modal-text"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" onclick="closeConfirmModal(false)">Abbrechen</button>
+      <button type="button" class="btn btn-danger" onclick="closeConfirmModal(true)">Löschen</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ---------------------------------------------------- SIGNATURE PAD ---------------------------------------------------- */
+  // Identical mechanism to einsatzrapport.html's Bootsführer/in pad: vector
+  // pen strokes (flat [x0,y0,x1,y1,...] arrays in the canvas's 600x170
+  // coordinate space), captured via Pointer Events, kept compact by skipping
+  // near-duplicate points. This is what gets sent to signature-save.php.
+  let signaturStrokes = [];
+
+  function initSignaturePad() {
+    const canvas = document.getElementById('signatur-pad');
+    if (!canvas || !canvas.getContext) return;
+    const ctx = canvas.getContext('2d');
+    const placeholder = document.getElementById('signatur-placeholder');
+    let currentStroke = null;
+
+    function redraw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = '#1a1a1a';
+      ctx.lineWidth = 2.2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      signaturStrokes.forEach(stroke => {
+        if (stroke.length < 4) return;
+        ctx.beginPath();
+        ctx.moveTo(stroke[0], stroke[1]);
+        for (let i = 2; i < stroke.length; i += 2) ctx.lineTo(stroke[i], stroke[i + 1]);
+        ctx.stroke();
+      });
+      if (placeholder) placeholder.style.display = signaturStrokes.length ? 'none' : '';
+    }
+
+    function pointFromEvent(e) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      return [
+        Math.round((e.clientX - rect.left) * scaleX),
+        Math.round((e.clientY - rect.top) * scaleY),
+      ];
+    }
+
+    function start(e) {
+      e.preventDefault();
+      canvas.focus();
+      const [x, y] = pointFromEvent(e);
+      currentStroke = [x, y];
+      signaturStrokes.push(currentStroke);
+      canvas.setPointerCapture(e.pointerId);
+    }
+    function move(e) {
+      if (!currentStroke) return;
+      e.preventDefault();
+      const [x, y] = pointFromEvent(e);
+      const lastX = currentStroke[currentStroke.length - 2];
+      const lastY = currentStroke[currentStroke.length - 1];
+      if (Math.abs(x - lastX) < 1.5 && Math.abs(y - lastY) < 1.5) return;
+      currentStroke.push(x, y);
+      redraw();
+    }
+    function end() { currentStroke = null; }
+
+    canvas.addEventListener('pointerdown', start);
+    canvas.addEventListener('pointermove', move);
+    canvas.addEventListener('pointerup', end);
+    canvas.addEventListener('pointercancel', end);
+    canvas.addEventListener('pointerleave', end);
+
+    redraw();
+    canvas.__redraw = redraw;
+  }
+  initSignaturePad();
+
+  function clearSignaturePad() {
+    signaturStrokes = [];
+    const canvas = document.getElementById('signatur-pad');
+    if (canvas && canvas.__redraw) canvas.__redraw();
+  }
+
+  /** Draws a read-only preview of a stored signature's strokes into a small canvas. */
+  function drawPreview(canvas, strokes) {
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = '#1a1a1a';
+    ctx.lineWidth = 1.4;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    const scaleX = canvas.width / 600;
+    const scaleY = canvas.height / 170;
+    (strokes || []).forEach(stroke => {
+      if (!stroke || stroke.length < 4) return;
+      ctx.beginPath();
+      ctx.moveTo(stroke[0] * scaleX, stroke[1] * scaleY);
+      for (let i = 2; i < stroke.length; i += 2) ctx.lineTo(stroke[i] * scaleX, stroke[i + 1] * scaleY);
+      ctx.stroke();
+    });
+  }
+
+  /* ---------------------------------------------------- STATUS HELPER ---------------------------------------------------- */
+  function setStatus(elId, message, type) {
+    const el = document.getElementById(elId);
+    el.textContent = message || '';
+    el.className = 'status-msg' + (type ? ' ' + type : '');
+  }
+
+  /* ---------------------------------------------------- PIN MODAL ---------------------------------------------------- */
+  let pinModalResolve = null;
+  function askPin() {
+    const modal = document.getElementById('pin-modal');
+    const input = document.getElementById('pin-input');
+    document.getElementById('pin-modal-error').textContent = '';
+    input.value = '';
+    modal.classList.add('visible');
+    setTimeout(() => input.focus(), 30);
+    return new Promise(resolve => { pinModalResolve = resolve; });
+  }
+  function submitPinModal() {
+    const input = document.getElementById('pin-input');
+    if (!/^\d{6}$/.test(input.value)) {
+      document.getElementById('pin-modal-error').textContent = 'Bitte genau 6 Ziffern eingeben.';
+      return;
+    }
+    closePinModal(input.value);
+  }
+  function closePinModal(value) {
+    document.getElementById('pin-modal').classList.remove('visible');
+    if (pinModalResolve) { pinModalResolve(value); pinModalResolve = null; }
+  }
+  document.getElementById('pin-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') submitPinModal();
+  });
+
+  /* ---------------------------------------------------- CONFIRM MODAL ---------------------------------------------------- */
+  let confirmModalResolve = null;
+  function askConfirm(message) {
+    document.getElementById('confirm-modal-text').textContent = message;
+    document.getElementById('confirm-modal').classList.add('visible');
+    return new Promise(resolve => { confirmModalResolve = resolve; });
+  }
+  function closeConfirmModal(value) {
+    document.getElementById('confirm-modal').classList.remove('visible');
+    if (confirmModalResolve) { confirmModalResolve(value); confirmModalResolve = null; }
+  }
+
+  /* ---------------------------------------------------- ADD SIGNATURE ---------------------------------------------------- */
+  async function addSignature() {
+    const name = document.getElementById('sig-name').value.trim();
+    if (!name) { setStatus('add-status', 'Bitte einen Namen eingeben.', 'err'); return; }
+    if (signaturStrokes.length === 0) { setStatus('add-status', 'Bitte zuerst unterschreiben.', 'err'); return; }
+
+    const pin = await askPin();
+    if (pin === null) return; // cancelled
+
+    const addBtn = document.getElementById('addBtn');
+    addBtn.disabled = true;
+    setStatus('add-status', 'Wird gespeichert…', '');
+    try {
+      const res = await fetch('signature-save.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, pin, strokes: signaturStrokes }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        setStatus('add-status', `Unterschrift von "${name}" gespeichert.`, 'ok');
+        document.getElementById('sig-name').value = '';
+        clearSignaturePad();
+        // If the manage-list is currently unlocked, refresh it so the new/updated entry shows immediately.
+        if (adminPassword) refreshSignatureList();
+      } else {
+        setStatus('add-status', result.error || 'Speichern fehlgeschlagen.', 'err');
+      }
+    } catch (e) {
+      setStatus('add-status', 'Verbindungsfehler. Bitte erneut versuchen.', 'err');
+    } finally {
+      addBtn.disabled = false;
+    }
+  }
+
+  /* ---------------------------------------------------- MANAGE SIGNATURES ---------------------------------------------------- */
+  // Kept only in memory for this page load (never in localStorage/a cookie) -
+  // reused for the delete calls below so the admin isn't re-prompted per row.
+  let adminPassword = null;
+
+  async function unlockAdmin() {
+    const pwField = document.getElementById('admin-password');
+    const pw = pwField.value;
+    if (!pw) { setStatus('admin-status', 'Bitte Admin-Passwort eingeben.', 'err'); return; }
+
+    const unlockBtn = document.getElementById('unlockBtn');
+    unlockBtn.disabled = true;
+    setStatus('admin-status', 'Wird geprüft…', '');
+    try {
+      const res = await fetch('signature-admin-list.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminPassword: pw }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        adminPassword = pw;
+        pwField.value = '';
+        setStatus('admin-status', 'Entsperrt.', 'ok');
+        renderSignatureList(result.signatures);
+      } else {
+        setStatus('admin-status', result.error || 'Falsches Passwort.', 'err');
+      }
+    } catch (e) {
+      setStatus('admin-status', 'Verbindungsfehler. Bitte erneut versuchen.', 'err');
+    } finally {
+      unlockBtn.disabled = false;
+    }
+  }
+
+  async function refreshSignatureList() {
+    if (!adminPassword) return;
+    try {
+      const res = await fetch('signature-admin-list.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminPassword }),
+      });
+      const result = await res.json();
+      if (result.success) renderSignatureList(result.signatures);
+    } catch (e) { /* silent - the visible list just stays as-is */ }
+  }
+
+  function renderSignatureList(signatures) {
+    const container = document.getElementById('signature-list');
+    container.innerHTML = '';
+    container.style.display = '';
+
+    if (!signatures || signatures.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'signature-list-empty';
+      empty.textContent = 'Keine gespeicherten Unterschriften.';
+      container.appendChild(empty);
+      return;
+    }
+
+    signatures.forEach(sig => {
+      const row = document.createElement('div');
+      row.className = 'signature-row';
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 160; canvas.height = 48;
+      canvas.style.width = '160px'; canvas.style.height = '48px';
+      drawPreview(canvas, sig.strokes);
+
+      const info = document.createElement('div');
+      info.className = 'signature-row-info';
+      const nameEl = document.createElement('div');
+      nameEl.className = 'signature-row-name';
+      nameEl.textContent = sig.name;
+      const dateEl = document.createElement('div');
+      dateEl.className = 'signature-row-date';
+      dateEl.textContent = sig.updatedAt ? 'Aktualisiert: ' + sig.updatedAt : '';
+      info.appendChild(nameEl);
+      info.appendChild(dateEl);
+
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'btn btn-danger';
+      delBtn.textContent = 'Löschen';
+      delBtn.onclick = () => requestDelete(sig.id, sig.name);
+
+      row.appendChild(canvas);
+      row.appendChild(info);
+      row.appendChild(delBtn);
+      container.appendChild(row);
+    });
+  }
+
+  async function requestDelete(id, name) {
+    const ok = await askConfirm(`Unterschrift von "${name}" wirklich endgültig löschen?`);
+    if (!ok || !adminPassword) return;
+    setStatus('admin-status', 'Wird gelöscht…', '');
+    try {
+      const res = await fetch('signature-delete.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminPassword, id }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        setStatus('admin-status', `Unterschrift von "${name}" gelöscht.`, 'ok');
+        refreshSignatureList();
+      } else {
+        setStatus('admin-status', result.error || 'Löschen fehlgeschlagen.', 'err');
+      }
+    } catch (e) {
+      setStatus('admin-status', 'Verbindungsfehler. Bitte erneut versuchen.', 'err');
+    }
+  }
+</script>
+</body>
+</html>
