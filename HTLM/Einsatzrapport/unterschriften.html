@@ -85,8 +85,8 @@
     /* Name + Rang side by side - Rang narrower since its values are short. */
     .name-rank-row { display: flex; gap: 12px; }
     .name-rank-row .field-row { margin-bottom: 12px; }
-    .name-rank-row .field-row:first-child { flex: 2; }
-    .name-rank-row .field-row:last-child { flex: 1; min-width: 130px; }
+    .name-rank-row .field-row:first-child { flex: 1; min-width: 130px; }
+    .name-rank-row .field-row:last-child { flex: 2; }
 
     /* ---------------------------------------------------- SIGNATURE PAD ---------------------------------------------------- */
     /* Same vector-pen-stroke pad as einsatzrapport.html's Bootsführer/in
@@ -215,10 +215,6 @@
 
   <div class="name-rank-row">
     <div class="field-row">
-      <div class="field-label">Name</div>
-      <input type="text" id="sig-name" placeholder="Vorname Nachname">
-    </div>
-    <div class="field-row">
       <div class="field-label">Rang</div>
       <select id="sig-rank">
         <option value="">Rang wählen</option>
@@ -227,6 +223,10 @@
         <option value="Pikettführer">Pikettführer</option>
         <option value="Seeretter">Seeretter</option>
       </select>
+    </div>
+    <div class="field-row">
+      <div class="field-label">Name</div>
+      <input type="text" id="sig-name" placeholder="Vorname Nachname">
     </div>
   </div>
 
