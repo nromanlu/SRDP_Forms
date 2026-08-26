@@ -1804,29 +1804,46 @@
     function bearbeitetVonRow(datumValue, confirmed) {
       const boxW = 45, boxH = 14;
       const hasSignature = !!(confirmed && confirmed.strokes && confirmed.strokes.length);
-      const neededHeight = hasSignature ? (lineH + 1 + boxH + 4) : (lineH + 4);
+      // Box top lines up with the "Datum:" text itself (no label above the
+      // box any more); rank+name print as a caption one line below the box,
+      // left-aligned to the box's own left edge - same idea as a printed
+      // name under a signature line. captionGap adds a small breathing-room
+      // gap (~1.3mm, roughly 3-5px) between the box's bottom border and the
+      // caption text, instead of the caption sitting right against it.
+      const captionGap = 1.3;
+      const neededHeight = hasSignature ? (boxH + captionGap + lineH + 4) : (lineH + 4);
       ensureSpace(neededHeight);
+      const rowTopY = y;
+
+      if (!hasSignature) {
+        pdf.setFont('LiberationSans', 'bold');
+        pdf.setFontSize(9);
+        pdf.setTextColor(...ink);
+        pdf.text('Datum:', marginX, rowTopY);
+        pdf.setFont('LiberationSans', 'normal');
+        pdf.text(datumValue || '-', marginX + 30, rowTopY);
+        pdf.setTextColor(...ink);
+        pdf.text('Noch nicht bearbeitet', pageW - marginX, rowTopY, { align: 'right' });
+        y = rowTopY + lineH + 4;
+        return;
+      }
+
+      const boxTopY = rowTopY;
+      const boxX = pageW - marginX - boxW;
+      // Bottom (baseline) of the rank/name caption under the box - see below.
+      const captionBaselineY = boxTopY + boxH + captionGap + lineH - 1;
+      // "Datum:" sits vertically centered on the whole right-side block, from
+      // the box's top edge down to the caption's baseline - not pinned to
+      // the box's top the way it is when there's no signature.
+      const datumY = (boxTopY + captionBaselineY) / 2;
 
       pdf.setFont('LiberationSans', 'bold');
       pdf.setFontSize(9);
       pdf.setTextColor(...ink);
-      pdf.text('Datum:', marginX, y);
+      pdf.text('Datum:', marginX, datumY);
       pdf.setFont('LiberationSans', 'normal');
-      pdf.text(datumValue || '-', marginX + 30, y);
+      pdf.text(datumValue || '-', marginX + 30, datumY);
 
-      if (!hasSignature) {
-        pdf.setTextColor(...ink);
-        pdf.text('Noch nicht bearbeitet', pageW - marginX, y, { align: 'right' });
-        y += lineH + 4;
-        return;
-      }
-
-      const label = confirmed.rank ? `${confirmed.rank} ${confirmed.name}` : confirmed.name;
-      pdf.setTextColor(...ink);
-      pdf.text(label, pageW - marginX, y, { align: 'right' });
-
-      const boxTopY = y + lineH + 1;
-      const boxX = pageW - marginX - boxW;
       pdf.setDrawColor(...lightGray);
       pdf.setLineWidth(0.3);
       pdf.rect(boxX, boxTopY, boxW, boxH, 'D');
@@ -1841,7 +1858,13 @@
           );
         }
       });
-      y = boxTopY + boxH + 4;
+
+      const label = confirmed.rank ? `${confirmed.rank} ${confirmed.name}` : confirmed.name;
+      pdf.setFont('LiberationSans', 'normal');
+      pdf.setFontSize(9);
+      pdf.setTextColor(...ink);
+      pdf.text(label, boxX, captionBaselineY);
+      y = captionBaselineY + 3;
     }
 
     // ---- Header ----
@@ -2011,7 +2034,6 @@
     // report's vector-only PDF output. Protokollführer/-in prints alongside
     // it (right-aligned) instead of as its own row underneath.
     signatureBox('Unterschrift Bootsführer/in', fuehrerSignaturStrokes, 'Protokollführer/-in', val('sig_crew') || '-');
-    hr(false);
 
     // ---- Wird von Obmann ausgefuellt ----
     // Reserve room for the WHOLE section (title + fields + billing table + closing
@@ -2019,7 +2041,9 @@
     // doesn't fit, rather than leaving just the last line or two stranded alone -
     // same fix applied to the Pikettrapport signature line.
     hr(true);
-    ensureSpace(9 + lineH + 5 + 4 * (lineH + 4) + lineH + 4);
+    // +4 at the end reserves room for the light-gray hr() now printed
+    // between the Total line and the Datum/signature row below it.
+    ensureSpace(9 + lineH + 5 + 4 * (lineH + 4) + lineH + 4 + 4);
     sectionTitle('Kostenabrechnung');
     fieldRow('Einsatz Nr.', val('einsatz-nr') || '-');
 
@@ -2051,6 +2075,7 @@
     pdf.text(`Fr. ${billingTotalValue().toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageW - marginX, y, { align: 'right' });
     y += lineH + 4;
 
+    hr(false);
     bearbeitetVonRow(val('obmann-datum'), obmannCrewConfirmedSignature);
 
     // ---- Version footnote (bottom-right of every page) ----
