@@ -80,7 +80,16 @@ if (!isset($record['pinHash']) || !password_verify($pin, $record['pinHash'])) {
     );
 }
 
-// Correct PIN - reset the counter and confirm.
+// Correct PIN - reset the counter and confirm. The PDF's "Kostenabrechnung"
+// section embeds this person's actual stored signature once confirmed here
+// (see notifySignatureDeletion's sibling, the "Bearbeitet von" success
+// handler in einsatzrapport.html) - rank and strokes are only ever released
+// to the client at this point, gated by the PIN check above, never from
+// signature-names-list.php (which stays name-only for populating the list).
 $record['selectFailedAttempts'] = 0;
 write_json_file($path, $record);
-respond(true, null, ['name' => $record['name']]);
+respond(true, null, [
+    'name'    => $record['name'],
+    'rank'    => isset($record['rank']) ? $record['rank'] : '',
+    'strokes' => isset($record['strokes']) ? $record['strokes'] : [],
+]);

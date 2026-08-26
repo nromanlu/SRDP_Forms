@@ -234,6 +234,14 @@
        on narrow screens can only happen between pairs, never between an input
        and its trailing unit symbol. */
     .gps-pair { display: inline-flex; align-items: center; gap: 2px; }
+    /* The free-text "Relativ" fields used flex:1 to fill the row, which -
+       since this column's content is otherwise the narrowest of the three
+       in "Gemeindegebiet & Position" - stretched all the way to the grid's
+       column boundary and made the gap before "Weitere Organisationen" look
+       much tighter than the gap before this column, even though the grid's
+       own column-gap is identical everywhere. Capping the width leaves the
+       same breathing room on this column's right edge as the other two. */
+    .gps-relativ-input { flex: 1; max-width: 160px; }
     /* Same idea for the Anzahl Personen row: input+label always wrap together. */
     .count-pair { display: inline-flex; align-items: center; gap: 4px; }
 
@@ -344,7 +352,20 @@
     /* "Bearbeitet von" selects a name from stored (PIN-protected)
        signatures - see verifyObmannCrewSelection() in the JS. Feedback
        (wrong PIN / remaining attempts / auto-deleted) prints here, always on
-       its own line under the dropdown rather than widening the row. */
+       its own line under the dropdown rather than widening the row.
+       #obmann-crew-status uses flex-basis:100% to force itself onto its own
+       line inside .field-control's wrapping flex row - but .field-control
+       has no width of its own (shrink-to-fit), and a flex-basis:100% child
+       inside a shrink-to-fit flex container makes the BROWSER size that
+       container to fill all available space to satisfy the 100% - which
+       silently defeats margin-left:auto above (the block, no longer a
+       narrow column, has nowhere left to be pushed to) the moment the status
+       text actually renders. Fixing that by pinning .field-control to the
+       select's own width (220px) so it can never grow regardless of
+       content - the status line then wraps within that fixed width instead
+       of expanding it. Reverted to auto-width on mobile below, where the
+       whole block is meant to stretch full-width anyway. */
+    .obmann-date-row .field-row:last-child .field-control { width: 220px; }
     #obmann-crew-status { flex-basis: 100%; font-size: 10px; min-height: 12px; }
     #obmann-crew-status.err { color: #c8151b; font-weight: 600; }
     #obmann-crew-status.ok { color: #2a7a2a; font-weight: 600; }
@@ -480,6 +501,7 @@
          oddly on a narrow screen. */
       .obmann-date-row { flex-direction: column; align-items: stretch; gap: 4px; }
       .obmann-date-row .field-row:last-child { margin-left: 0; align-items: stretch; }
+      .obmann-date-row .field-row:last-child .field-control { width: auto; }
       .obmann-date-row .field-label { white-space: nowrap; }
     }
 
@@ -613,11 +635,11 @@
       </div>
       <div class="gps-row">
         <span class="gps-label">Relativ:</span>
-        <input type="text" id="relativ1" placeholder="z.B. 500m von Hafen X" style="flex:1">
+        <input type="text" id="relativ1" placeholder="z.B. 500m von Hafen X" class="gps-relativ-input">
       </div>
       <div class="gps-row">
         <span class="gps-label"></span>
-        <input type="text" id="relativ2" placeholder="z.B. 300m von Boje Y" style="flex:1">
+        <input type="text" id="relativ2" placeholder="z.B. 300m von Boje Y" class="gps-relativ-input">
       </div>
     </div>
     <div class="option-col">
@@ -917,6 +939,17 @@
   // attempt deletes that stored signature outright.
   let SignatureNames = []; // [{ id, name }, ...]
 
+  // Set only right after a successful PIN check in wireObmannCrewVerification()
+  // below - { name, rank, strokes } for the confirmed "Bearbeitet von" person,
+  // or null if nobody is currently confirmed. The PDF's Kostenabrechnung
+  // section draws this person's actual stored signature when set, and
+  // "Noch nicht bearbeitet" when null. Deliberately NOT restored by
+  // applyEditLinkIfPresent()/fillForm() - the stored signature strokes are
+  // only ever released by the PIN check itself (see signature-verify-pin.php),
+  // never carried in the shareable edit-link URL, so reopening a saved
+  // rapport requires re-entering the PIN to actually embed the signature again.
+  let obmannCrewConfirmedSignature = null;
+
   async function loadSignatureNames() {
     try {
       const res = await fetch('signature-names-list.php');
@@ -1022,6 +1055,7 @@
       if (!chosenOption || !chosenOption.dataset.sigId) {
         // Blank/placeholder chosen - no PIN needed, just accept it.
         select.dataset.confirmedValue = select.value;
+        obmannCrewConfirmedSignature = null;
         setObmannCrewStatus('', '');
         return;
       }
@@ -1045,6 +1079,11 @@
         const result = await res.json();
         if (result.success) {
           select.dataset.confirmedValue = select.value;
+          // The actual stored signature is only ever handed to the client
+          // right here, gated by the PIN check that just succeeded - see
+          // signature-verify-pin.php and the Kostenabrechnung PDF section
+          // that reads this to draw it.
+          obmannCrewConfirmedSignature = { name, rank: result.rank || '', strokes: Array.isArray(result.strokes) ? result.strokes : [] };
           setObmannCrewStatus(`Bestätigt: ${name}.`, 'ok');
         } else if (result.deleted) {
           // Final wrong attempt - the signature no longer exists server-side;
@@ -1055,6 +1094,7 @@
           await loadSignatureNames();
           populateObmannCrewSelect();
           select.value = select.dataset.confirmedValue = '';
+          obmannCrewConfirmedSignature = null;
           updateSelectPlaceholderState(select);
           setObmannCrewStatus(result.error || 'PIN falsch. Noch 0 Versuch(e).', 'err');
           if (result.notifyToken) {
@@ -1378,10 +1418,13 @@
       });
       document.querySelectorAll('select').forEach(select => {
         select.selectedIndex = 0;
+        select.dataset.confirmedValue = select.value;
         if (typeof updateSelectPlaceholderState === 'function') {
           updateSelectPlaceholderState(select);
         }
       });
+      obmannCrewConfirmedSignature = null;
+      if (typeof setObmannCrewStatus === 'function') setObmannCrewStatus('', '');
       document.getElementById('einsatzbericht').style.height = '';
       document.querySelectorAll('#eigner-name, #eigner-strasse, #eigner-plz-ort, #eigner-tel').forEach(el => { el.disabled = false; });
       document.querySelectorAll('.defekt-input, .inline-detail').forEach(el => el.classList.remove('visible'));
@@ -1701,9 +1744,27 @@
     // -in: <name>" alongside the signature instead of as its own row
     // underneath.
     function signatureBox(label, strokes, rightLabel, rightValue) {
+      const hasSignature = !!(strokes && strokes.length);
+
+      // Nothing was actually signed - skip the box and its title entirely
+      // rather than printing an empty box. The accompanying field (e.g.
+      // Protokollführer/-in) is still meaningful on its own, so it's kept -
+      // right-aligned at the page edge, same as it would sit next to the box.
+      if (!hasSignature) {
+        if (rightLabel) {
+          ensureSpace(lineH);
+          pdf.setFont('LiberationSans', 'normal');
+          pdf.setFontSize(9);
+          pdf.setTextColor(...ink);
+          pdf.text(`${rightLabel}: ${rightValue || '-'}`, pageW - marginX, y, { align: 'right' });
+          y += lineH + 1;
+        }
+        return;
+      }
+
       const boxW = 70, boxH = 19.8;
       ensureSpace(lineH + boxH + 6);
-      pdf.setFont('LiberationSans', 'bold');
+      pdf.setFont('LiberationSans', 'normal');
       pdf.setFontSize(9);
       pdf.setTextColor(...ink);
       pdf.text(label, marginX, y);
@@ -1712,25 +1773,74 @@
       pdf.setDrawColor(...lightGray);
       pdf.setLineWidth(0.3);
       pdf.rect(marginX, boxTopY, boxW, boxH, 'D');
-      if (strokes && strokes.length) {
-        const scaleX = boxW / 600, scaleY = boxH / 170;
-        pdf.setDrawColor(...ink);
-        pdf.setLineWidth(0.35);
-        strokes.forEach(stroke => {
-          for (let i = 2; i < stroke.length; i += 2) {
-            pdf.line(
-              marginX + stroke[i - 2] * scaleX, boxTopY + stroke[i - 1] * scaleY,
-              marginX + stroke[i] * scaleX, boxTopY + stroke[i + 1] * scaleY
-            );
-          }
-        });
-      }
+      const scaleX = boxW / 600, scaleY = boxH / 170;
+      pdf.setDrawColor(...ink);
+      pdf.setLineWidth(0.35);
+      strokes.forEach(stroke => {
+        for (let i = 2; i < stroke.length; i += 2) {
+          pdf.line(
+            marginX + stroke[i - 2] * scaleX, boxTopY + stroke[i - 1] * scaleY,
+            marginX + stroke[i] * scaleX, boxTopY + stroke[i + 1] * scaleY
+          );
+        }
+      });
       if (rightLabel) {
         pdf.setFont('LiberationSans', 'normal');
         pdf.setFontSize(9);
         pdf.setTextColor(...ink);
         pdf.text(`${rightLabel}: ${rightValue || '-'}`, pageW - marginX, boxTopY + boxH, { align: 'right' });
       }
+      y = boxTopY + boxH + 4;
+    }
+
+    // Kostenabrechnung's closing "Datum" / "Bearbeitet von" line - Datum on
+    // the left, and on the right (next to it, right-aligned) either the
+    // confirmed ADS's rank, name and their actual stored signature (drawn
+    // the same vector way as signatureBox above, just smaller - this is a
+    // secondary/summary signature, not the main Bootsführer one), or plain
+    // "Noch nicht bearbeitet" text if nobody has been PIN-confirmed yet in
+    // the "Bearbeitet von" dropdown. `confirmed` is obmannCrewConfirmedSignature
+    // from the form JS - null, or { name, rank, strokes }.
+    function bearbeitetVonRow(datumValue, confirmed) {
+      const boxW = 45, boxH = 14;
+      const hasSignature = !!(confirmed && confirmed.strokes && confirmed.strokes.length);
+      const neededHeight = hasSignature ? (lineH + 1 + boxH + 4) : (lineH + 4);
+      ensureSpace(neededHeight);
+
+      pdf.setFont('LiberationSans', 'bold');
+      pdf.setFontSize(9);
+      pdf.setTextColor(...ink);
+      pdf.text('Datum:', marginX, y);
+      pdf.setFont('LiberationSans', 'normal');
+      pdf.text(datumValue || '-', marginX + 30, y);
+
+      if (!hasSignature) {
+        pdf.setTextColor(...ink);
+        pdf.text('Noch nicht bearbeitet', pageW - marginX, y, { align: 'right' });
+        y += lineH + 4;
+        return;
+      }
+
+      const label = confirmed.rank ? `${confirmed.rank} ${confirmed.name}` : confirmed.name;
+      pdf.setTextColor(...ink);
+      pdf.text(label, pageW - marginX, y, { align: 'right' });
+
+      const boxTopY = y + lineH + 1;
+      const boxX = pageW - marginX - boxW;
+      pdf.setDrawColor(...lightGray);
+      pdf.setLineWidth(0.3);
+      pdf.rect(boxX, boxTopY, boxW, boxH, 'D');
+      const scaleX = boxW / 600, scaleY = boxH / 170;
+      pdf.setDrawColor(...ink);
+      pdf.setLineWidth(0.35);
+      confirmed.strokes.forEach(stroke => {
+        for (let i = 2; i < stroke.length; i += 2) {
+          pdf.line(
+            boxX + stroke[i - 2] * scaleX, boxTopY + stroke[i - 1] * scaleY,
+            boxX + stroke[i] * scaleX, boxTopY + stroke[i + 1] * scaleY
+          );
+        }
+      });
       y = boxTopY + boxH + 4;
     }
 
@@ -1778,7 +1888,10 @@
     pdf.setTextColor(...ink);
     pdf.text('Datum:', marginX, y);
     pdf.setFont('LiberationSans', 'normal');
-    pdf.text(val('datum') || '-', marginX + 22, y);
+    // Same x as Einsatzbeginn's value below (marginX + 30) so the two dates/
+    // times line up in one column instead of Datum's value sitting further
+    // left just because "Datum:" is a shorter label than "Einsatzbeginn:".
+    pdf.text(val('datum') || '-', marginX + 30, y);
 
     pdf.setTextColor(...midGray);
     pdf.text('Einsatzalarm:', marginX + 68, y);
@@ -1938,8 +2051,7 @@
     pdf.text(`Fr. ${billingTotalValue().toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageW - marginX, y, { align: 'right' });
     y += lineH + 4;
 
-    fieldRow('Datum', val('obmann-datum') || '-');
-    fieldRow('Bearbeitet von', val('obmann_crew') || '-');
+    bearbeitetVonRow(val('obmann-datum'), obmannCrewConfirmedSignature);
 
     // ---- Version footnote (bottom-right of every page) ----
     const footerNote = 'Einsatzrapport V6.0 / srdp.ch';
