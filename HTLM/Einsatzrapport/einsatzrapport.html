@@ -201,6 +201,11 @@
       margin-top: 4px;
     }
     .option-matrix.cols-3 { grid-template-columns: repeat(3, 1fr); }
+    /* Gemeindegebiet & Position: Position is nested inside the same column as
+       Gemeindegebiet (stacked below it) instead of being a separate 3rd column,
+       so this section is only 2 columns wide - see the HTML comment above
+       "GEMEINDEGEBIET / POSITION / WEITERE ORGANISATIONEN". */
+    .option-matrix.cols-2 { grid-template-columns: repeat(2, 1fr); }
     .option-col-title {
       font-weight: 700; font-size: 10.5px;
       margin-bottom: 3px;
@@ -225,7 +230,11 @@
     .inline-detail.visible { display: inline-block; flex: 1; min-width: 140px; }
 
     /* ---------------------------------------------------- POSITION / GPS ---------------------------------------------------- */
-    .gps-row { display: flex; align-items: center; gap: 4px; margin-bottom: 3px; flex-wrap: wrap; }
+    /* flex-wrap: nowrap is deliberate - the GPS degree/minute entry must always
+       stay on one line (even at iPad width), never wrap onto a second line. The
+       .option-matrix.cols-2 mobile override below gives this row a full-width
+       column so there's always room. */
+    .gps-row { display: flex; align-items: center; gap: 4px; margin-bottom: 3px; flex-wrap: nowrap; }
     .gps-row:last-child { margin-bottom: 0; }
     .gps-label { font-size: 10px; color: #666; min-width: 42px; }
     .gps-deg { width: 46px; }
@@ -478,6 +487,10 @@
          4 (or 3) narrow columns are illegible on a phone - fold down to a 2-column grid,
          each column still a self-contained block so nothing needs re-labelling. */
       .option-matrix, .option-matrix.cols-3 { grid-template-columns: repeat(2, 1fr); gap: 10px 14px; }
+      /* Gemeindegebiet & Position (cols-2): each column already holds a
+         nowrap GPS row, so collapse to a single full-width column here
+         instead of squeezing it into half the phone screen. */
+      .option-matrix.cols-2 { grid-template-columns: 1fr; gap: 10px 14px; }
 
       /* Bootsführer/-in and Bootseigner/-in: stack instead of side-by-side columns. */
       .owner-grid { grid-template-columns: 1fr; gap: 12px; }
@@ -618,7 +631,7 @@
 
   <!-- GEMEINDEGEBIET / POSITION / WEITERE ORGANISATIONEN -->
   <div class="section-title">Gemeindegebiet &amp; Position</div>
-  <div class="option-matrix cols-3">
+  <div class="option-matrix cols-2">
     <div class="option-col">
       <div class="option-col-title">Gemeindegebiet</div>
       <label class="option-item"><input type="radio" name="gemeinde" id="gemeinde-wollerau" value="Wollerau"> Wollerau</label>
@@ -627,18 +640,16 @@
       <label class="option-item"><input type="radio" name="gemeinde" id="gemeinde-lachen" value="Lachen"> Lachen</label>
       <label class="option-item"><input type="radio" name="gemeinde" id="gemeinde-andere" value="Andere"> Andere:</label>
       <input type="text" id="gemeinde-andere-detail" class="defekt-input" placeholder="Angabe">
-    </div>
-    <div class="option-col">
-      <div class="option-col-title">Position</div>
+      <div class="option-col-title" style="margin-top:8px;">Position</div>
       <div class="gps-row">
-        <span class="gps-label">GPS N:</span>
+        <span class="gps-label">GPS:</span>
         <span class="gps-pair"><input type="number" id="gps-n-deg" placeholder="0" class="gps-deg">°</span>
-        <span class="gps-pair"><input type="text" id="gps-n-min" placeholder="0.000" class="gps-min">'</span>
+        <span class="gps-pair"><input type="text" id="gps-n-min" placeholder="0.000" class="gps-min">'N</span>
       </div>
       <div class="gps-row">
-        <span class="gps-label">GPS O:</span>
+        <span class="gps-label"></span>
         <span class="gps-pair"><input type="number" id="gps-o-deg" placeholder="0" class="gps-deg">°</span>
-        <span class="gps-pair"><input type="text" id="gps-o-min" placeholder="0.000" class="gps-min">'</span>
+        <span class="gps-pair"><input type="text" id="gps-o-min" placeholder="0.000" class="gps-min">'O</span>
       </div>
       <div class="gps-row">
         <span class="gps-label">Relativ:</span>
