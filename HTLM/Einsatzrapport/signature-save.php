@@ -73,6 +73,12 @@ if ($existing !== null) {
         respond(false, 'PIN falsch für "' . $existing['name'] . '".', [], 403);
     }
     lockout_register_success($existing);
+    // Proving the PIN here also clears the SEPARATE fail counter that
+    // signature-verify-pin.php uses (the "Bearbeitet von" identity check in
+    // einsatzrapport.html) - re-signing legitimately should reset both, not
+    // just this endpoint's own temp-lockout state, so a person doesn't stay
+    // stuck near the auto-delete threshold from unrelated wrong picks there.
+    $existing['selectFailedAttempts'] = 0;
     $record = $existing;
     $record['name']      = $name;
     $record['rank']      = $rank;

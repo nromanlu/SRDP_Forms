@@ -54,8 +54,11 @@ header('Content-Type: application/json; charset=utf-8');
 
 function respond($success, $error = null, $extra = [], $httpCode = 200) {
     http_response_code($httpCode);
-    $payload = $success ? array_merge(['success' => true], $extra) : ['success' => false, 'error' => $error];
-    echo json_encode($payload);
+    // $extra is merged in on BOTH branches - a failure response can still
+    // carry structured fields (e.g. signature-verify-pin.php's `remaining`
+    // attempts / `deleted` flag) alongside the human-readable error message.
+    $base = $success ? ['success' => true] : ['success' => false, 'error' => $error];
+    echo json_encode(array_merge($base, $extra));
     exit;
 }
 

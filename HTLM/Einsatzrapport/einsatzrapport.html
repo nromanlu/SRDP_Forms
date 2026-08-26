@@ -320,6 +320,26 @@
     .billing-total .billing-label { color: #1a1a1a; }
     #billing-total-value { font-size: 12px; }
 
+    /* Datum + Bearbeitet von, side by side under the billing table -
+       Bearbeitet von pushed to the row's right edge (margin-left:auto on
+       its .field-row) instead of stacking as its own full-width row
+       underneath Datum. Each .field-row is switched from the section's
+       default 150px-label grid to an inline flex pairing (label + control),
+       sized to its own content. */
+    .obmann-date-row { display: flex; align-items: center; gap: 20px; margin-top: 4px; }
+    .obmann-date-row .field-row {
+      display: flex; align-items: center; gap: 8px;
+      grid-template-columns: none; border-bottom: none; padding: 0;
+    }
+    .obmann-date-row .field-row:last-child { margin-left: auto; }
+    /* "Bearbeitet von" selects a name from stored (PIN-protected)
+       signatures - see verifyObmannCrewSelection() in the JS. Feedback
+       (wrong PIN / remaining attempts / auto-deleted) prints here, always on
+       its own line under the dropdown rather than widening the row. */
+    #obmann-crew-status { flex-basis: 100%; font-size: 10px; min-height: 12px; }
+    #obmann-crew-status.err { color: #c8151b; font-weight: 600; }
+    #obmann-crew-status.ok { color: #2a7a2a; font-weight: 600; }
+
     /* ---------------------------------------------------- FREETEXT (Einsatzbericht) ---------------------------------------------------- */
     /* min-height (not height) + overflow:hidden lets the auto-resize JS grow the
        box to fit the typed content instead of showing an internal scrollbar. */
@@ -372,6 +392,31 @@
       margin-top: 8px;
     }
 
+    /* ---------------------------------------------------- PIN MODAL (Bearbeitet von) ---------------------------------------------------- */
+    /* Confirms identity against a stored signature's PIN before "Bearbeitet
+       von" accepts a picked name - see verifyObmannCrewSelection() in the
+       JS. Same overlay/box pattern as unterschriften.html's PIN modal, kept
+       self-contained here since this page doesn't otherwise use modals. */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45);
+      align-items: center; justify-content: center; z-index: 100; padding: 16px;
+    }
+    .modal-overlay.visible { display: flex; }
+    .modal-box {
+      background: #fff; border-radius: 6px; padding: 20px 22px; max-width: 300px; width: 100%;
+      box-shadow: 0 8px 30px rgba(0,0,0,.25);
+    }
+    .modal-title { font-weight: 700; font-size: 13px; margin-bottom: 10px; }
+    .modal-text { font-size: 11.5px; color: #444; margin-bottom: 12px; line-height: 1.4; }
+    .modal-box input[type="tel"] {
+      width: 100%; border: 1.5px solid #aaa; border-radius: 2px; background: #f7f7f5;
+      font-size: 20px; letter-spacing: 6px; text-align: center; padding: 8px 5px;
+      font-family: inherit; outline: none; transition: border-color .15s;
+    }
+    .modal-box input[type="tel"]:focus { border-color: #1a4fa0; background: #eef3fb; }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+    .modal-error { color: #c8151b; font-size: 10.5px; margin-top: 8px; min-height: 13px; }
+
     /* ---------------------------------------------------- MOBILE / IPHONE ---------------------------------------------------- */
     /* iPad (>=744px in portrait) is the primary target and keeps the default layout above.
        These overrides only kick in on phone-width screens. */
@@ -418,6 +463,12 @@
          of getting squeezed/clipped. */
       .billing-row { flex-wrap: wrap; row-gap: 2px; }
       .billing-label { min-width: 110px; }
+
+      /* Datum / Bearbeitet von: back to stacked full-width rows at this
+         width - side by side with a 220px dropdown doesn't fit a phone screen. */
+      .obmann-date-row { flex-direction: column; align-items: stretch; gap: 4px; }
+      .obmann-date-row .field-row:last-child { margin-left: 0; }
+      .obmann-date-row .field-label { white-space: nowrap; }
     }
 
     /* ---------------------------------------------------- PDF EXPORT ---------------------------------------------------- */
@@ -735,17 +786,18 @@
         <span id="billing-total-value" class="billing-line-total">Fr. 0.00</span>
       </div>
     </div>
-    <div class="grid" style="margin-top:4px">
+    <div class="obmann-date-row">
       <div class="field-row">
         <div class="field-label">Datum</div>
         <div class="field-control"><input type="text" id="obmann-datum" placeholder="TT.MM.JJJJ" style="width:110px"></div>
       </div>
       <div class="field-row">
-        <div class="field-label">Obmann SRDP</div>
+        <div class="field-label">Bearbeitet von</div>
         <div class="field-control">
           <select id="obmann_crew" style="width:220px">
-            <option value="">Obmann auswählen</option>
+            <option value="">Person auswählen</option>
           </select>
+          <div id="obmann-crew-status" class="field-hint"></div>
         </div>
       </div>
     </div>
@@ -770,6 +822,19 @@
 
 </div>
 
+<!-- PIN MODAL - confirms identity when a name is picked in "Bearbeitet von" -->
+<div class="modal-overlay" id="obmann-pin-modal">
+  <div class="modal-box">
+    <div class="modal-title">PIN eingeben</div>
+    <div class="modal-text" id="obmann-pin-modal-text"></div>
+    <input type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="6" id="obmann-pin-input" placeholder="••••••" autocomplete="off">
+    <div class="modal-error" id="obmann-pin-modal-error"></div>
+    <div class="modal-actions">
+      <button type="button" class="signature-clear-btn" style="margin-top:0" onclick="closeObmannPinModal(null)">Abbrechen</button>
+      <button type="button" class="btn btn-submit" style="margin-top:0" onclick="submitObmannPinModal()">Bestätigen</button>
+    </div>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 
@@ -826,15 +891,59 @@
 
   const CREW_SELECT_IDS = [
     'crew_a', 'crew_b', 'crew_c', 'crew_d',
-    'sig_crew', 'obmann_crew'
+    'sig_crew'
   ];
 
+  /* ---------------------------------------------------- BEARBEITET VON (stored, PIN-protected signatures) ---------------------------------------------------- */
+  // "Bearbeitet von" no longer draws from the general crew.html list like the
+  // other selects above - it lists the names of signatures stored in
+  // unterschriften.html's signatures/ folder (signature-names-list.php,
+  // public/no-password since it's just names, same folder as this file), and
+  // picking one requires that signature's PIN (signature-verify-pin.php) to
+  // confirm identity before the selection is accepted. Wrong PINs count
+  // toward a per-signature limit (see MAX attempts below); the 5th wrong
+  // attempt deletes that stored signature outright.
+  let SignatureNames = []; // [{ id, name }, ...]
+
+  async function loadSignatureNames() {
+    try {
+      const res = await fetch('signature-names-list.php');
+      const result = await res.json();
+      SignatureNames = (result.success && Array.isArray(result.signatures)) ? result.signatures : [];
+    } catch (e) {
+      console.error('Signatur-Namen (signature-names-list.php) konnten nicht geladen werden:', e);
+      SignatureNames = [];
+    }
+  }
+
+  function populateObmannCrewSelect() {
+    const select = document.getElementById('obmann_crew');
+    if (!select) return;
+    // Keep track of the currently selected value across a repopulate (e.g.
+    // after an auto-delete) so a still-valid selection isn't silently lost.
+    const previousValue = select.value;
+    Array.from(select.querySelectorAll('option[data-sig-id]')).forEach(opt => opt.remove());
+    SignatureNames.forEach(sig => {
+      const option = document.createElement('option');
+      option.value = sig.name;
+      option.dataset.sigId = sig.id;
+      option.textContent = sig.name;
+      select.appendChild(option);
+    });
+    if (Array.from(select.options).some(o => o.value === previousValue)) {
+      select.value = previousValue;
+    }
+  }
+
   (async function initCrewSelects() {
-    await loadCrewNames();
+    await Promise.all([loadCrewNames(), loadSignatureNames()]);
     CREW_SELECT_IDS.forEach(id => {
       populateCrewSelect(id);
       wireSelectPlaceholder(id);
     });
+    populateObmannCrewSelect();
+    wireSelectPlaceholder('obmann_crew');
+    wireObmannCrewVerification();
 
     // Nach dem Befuellen der Crew-Dropdowns pruefen, ob die Seite ueber einen
     // "Rapport bearbeiten"-Link mit angehaengten Formulardaten geoeffnet wurde
@@ -842,7 +951,109 @@
     // <select>-Optionen laufen, sonst gibt es die Crew-Namen als Option noch
     // nicht und der Wert kann nicht gesetzt werden.
     applyEditLinkIfPresent();
+
+    // A restored edit link may have just set "Bearbeitet von" directly
+    // (bypassing the change handler above, which only runs on a live user
+    // pick) - resync the confirmed-value baseline so a later cancel/wrong-PIN
+    // reverts back to the restored name instead of blank.
+    document.getElementById('obmann_crew').dataset.confirmedValue = document.getElementById('obmann_crew').value;
   })();
+
+  /* ---- PIN confirmation flow for the "Bearbeitet von" select ---- */
+  function setObmannCrewStatus(message, type) {
+    const el = document.getElementById('obmann-crew-status');
+    el.textContent = message || '';
+    el.className = 'field-hint' + (type ? ' ' + type : '');
+  }
+
+  let obmannPinModalResolve = null;
+  function askObmannPin(name) {
+    const modal = document.getElementById('obmann-pin-modal');
+    const input = document.getElementById('obmann-pin-input');
+    document.getElementById('obmann-pin-modal-text').textContent =
+      `PIN von "${name}" eingeben, um die Auswahl zu bestätigen.`;
+    document.getElementById('obmann-pin-modal-error').textContent = '';
+    input.value = '';
+    modal.classList.add('visible');
+    setTimeout(() => input.focus(), 30);
+    return new Promise(resolve => { obmannPinModalResolve = resolve; });
+  }
+  function submitObmannPinModal() {
+    const input = document.getElementById('obmann-pin-input');
+    if (!/^\d{6}$/.test(input.value)) {
+      document.getElementById('obmann-pin-modal-error').textContent = 'Bitte genau 6 Ziffern eingeben.';
+      return;
+    }
+    closeObmannPinModal(input.value);
+  }
+  function closeObmannPinModal(value) {
+    document.getElementById('obmann-pin-modal').classList.remove('visible');
+    if (obmannPinModalResolve) { obmannPinModalResolve(value); obmannPinModalResolve = null; }
+  }
+  document.getElementById('obmann-pin-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') submitObmannPinModal();
+  });
+
+  function wireObmannCrewVerification() {
+    const select = document.getElementById('obmann_crew');
+    if (!select) return;
+    // The value the field last held with a CONFIRMED (PIN-verified) identity -
+    // reverted to on cancel/wrong-PIN/auto-delete, so an unverified pick
+    // never lingers as the field's value. Kept as a data-attribute (not a
+    // closure variable) so applyEditLinkIfPresent() - which sets select.value
+    // directly for a restored "Bearbeitet von" without going through this
+    // change handler - can resync it afterwards; see the call site below.
+    select.dataset.confirmedValue = select.value;
+
+    select.addEventListener('change', async () => {
+      const chosenOption = select.selectedOptions[0];
+      if (!chosenOption || !chosenOption.dataset.sigId) {
+        // Blank/placeholder chosen - no PIN needed, just accept it.
+        select.dataset.confirmedValue = select.value;
+        setObmannCrewStatus('', '');
+        return;
+      }
+      const name = chosenOption.value;
+      const sigId = chosenOption.dataset.sigId;
+
+      const pin = await askObmannPin(name);
+      if (pin === null) { // cancelled
+        select.value = select.dataset.confirmedValue;
+        updateSelectPlaceholderState(select);
+        return;
+      }
+
+      setObmannCrewStatus('Wird geprüft…', '');
+      try {
+        const res = await fetch('signature-verify-pin.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: sigId, pin }),
+        });
+        const result = await res.json();
+        if (result.success) {
+          select.dataset.confirmedValue = select.value;
+          setObmannCrewStatus(`Bestätigt: ${name}.`, 'ok');
+        } else if (result.deleted) {
+          // 5th wrong attempt - the signature no longer exists server-side;
+          // drop it from the dropdown too and revert the selection.
+          await loadSignatureNames();
+          populateObmannCrewSelect();
+          select.value = select.dataset.confirmedValue = '';
+          updateSelectPlaceholderState(select);
+          setObmannCrewStatus(result.error || 'PIN falsch. Signatur automatisch gelöscht.', 'err');
+        } else {
+          select.value = select.dataset.confirmedValue;
+          updateSelectPlaceholderState(select);
+          setObmannCrewStatus(result.error || 'PIN falsch.', 'err');
+        }
+      } catch (e) {
+        select.value = select.dataset.confirmedValue;
+        updateSelectPlaceholderState(select);
+        setObmannCrewStatus('Verbindungsfehler. Bitte erneut versuchen.', 'err');
+      }
+    });
+  }
 
   /* ---------------------------------------------------- EINSATZBERICHT: AUTO-EXPANDING TEXTAREA ---------------------------------------------------- */
   // Grows the box to fit what's typed instead of scrolling inside a fixed-height
@@ -1686,7 +1897,7 @@
     y += lineH + 4;
 
     fieldRow('Datum', val('obmann-datum') || '-');
-    fieldRow('Obmann SRDP', val('obmann_crew') || '-');
+    fieldRow('Bearbeitet von', val('obmann_crew') || '-');
 
     // ---- Version footnote (bottom-right of every page) ----
     const footerNote = 'Einsatzrapport V6.0 / srdp.ch';
