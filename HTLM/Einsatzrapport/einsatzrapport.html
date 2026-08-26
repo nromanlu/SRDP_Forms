@@ -1801,7 +1801,10 @@
       pdf.setDrawColor(...(thick ? ink : lightGray));
       pdf.setLineWidth(thick ? 0.6 : 0.3);
       pdf.line(marginX, y, pageW - marginX, y);
+      const lineY = y; // returned so a caller can anchor content to this exact
+                        // line (e.g. the GPS map spans line-above to line-below).
       y += thick ? 5 : 4;
+      return lineY;
     }
 
     function sectionTitle(text) {
@@ -2058,7 +2061,10 @@
     fieldRow('Wetter', radioValue('wetter') || '-');
     fieldRow('Windwarnung', radioValue('wind') || '-');
     y += 0.5;
-    hr(false);
+    // Captured (not just drawn): the map below spans from this exact line
+    // down to the section's closing line, so its y-position is needed later.
+    const pageCountBeforeSection = pdf.internal.getNumberOfPages();
+    const hrAboveGemeindePositionY = hr(false);
 
     // ---- Gemeindegebiet & Position ----
     // Small OSM snapshot of the reported position, when GPS was actually
@@ -2080,8 +2086,6 @@
     const rowValueWidth = gpsMap ? (contentW - 55 - gpsMapReservedWidth - gpsMapGap) : (contentW - 55);
 
     sectionTitle('Gemeindegebiet & Position');
-    const gemeindePositionTopY = y;
-    const pageCountBeforeSection = pdf.internal.getNumberOfPages();
     fieldRow('Gemeindegebiet', gemeindeText(), rowValueWidth);
     const gpsN = (val('gps-n-deg') || val('gps-n-min')) ? `${val('gps-n-deg') || '0'}° ${val('gps-n-min') || '0'}' N` : '';
     const gpsO = (val('gps-o-deg') || val('gps-o-min')) ? `${val('gps-o-deg') || '0'}° ${val('gps-o-min') || '0'}' O` : '';
@@ -2094,26 +2098,39 @@
       ['org-feuerwehr', 'Feuerwehr'], ['org-rega', 'Rega'],
     ], 'org-andere', 'org-andere-detail'), rowValueWidth);
 
-    // Draw the map spanning the height of the text block just printed,
-    // aligned to the content area's right edge - but only if the whole
-    // section landed on one page. A page break partway through (an
-    // unusually long "Weitere Organisationen" list, say) would put the
-    // section's top and bottom on different pages, where "match the
-    // section's height" is meaningless - skip the map rather than draw
-    // something wrong in that rare case.
+    // Draw the map spanning from the section's opening line down to its
+    // closing line (not just the text block), aligned to the content area's
+    // right edge - but only if the whole section landed on one page. A page
+    // break partway through (an unusually long "Weitere Organisationen"
+    // list, say) would put the section's top and bottom on different pages,
+    // where "span line-above to line-below" is meaningless - skip the map
+    // rather than draw something wrong in that rare case.
     if (gpsMap && pdf.internal.getNumberOfPages() === pageCountBeforeSection) {
-      let mapH = y - gemeindePositionTopY - 1;
+      // The closing line is drawn 0.5mm below the current `y`. 1.5mm was the
+      // gap already shown between the map and that line before this
+      // fit-to-lines change - applied symmetrically now, above AND below,
+      // so the map sits centered between the section's two lines rather
+      // than flush against the top one.
+      const gpsMapVerticalGap = 1.5;
+      const hrBelowGemeindePositionY = y + 0.5;
+      const mapAreaTopY = hrAboveGemeindePositionY + gpsMapVerticalGap;
+      const mapAreaBottomY = hrBelowGemeindePositionY - gpsMapVerticalGap;
+      let mapH = mapAreaBottomY - mapAreaTopY;
       let mapW = mapH * (gpsMap.width / gpsMap.height);
+      let mapY = mapAreaTopY;
       // The reserved column is generous on purpose (see gpsMapReservedWidth
       // above), so this normally never triggers - it's a safety cap for the
       // rare case the section still grew wider than expected, so the image
-      // can never overlap the text column, at the cost of then being a
-      // little shorter than the section instead of distorted.
+      // can never overlap the text column. When it does trigger, the now-
+      // shorter map is centred within the top/bottom gap area instead of
+      // staying flush to the top, so the gap grows equally on both sides.
       if (mapW > gpsMapReservedWidth) {
         mapW = gpsMapReservedWidth;
-        mapH = mapW * (gpsMap.height / gpsMap.width);
+        const cappedH = mapW * (gpsMap.height / gpsMap.width);
+        mapY = mapAreaTopY + (mapH - cappedH) / 2;
+        mapH = cappedH;
       }
-      pdf.addImage(gpsMap.dataUri, 'PNG', pageW - marginX - mapW, gemeindePositionTopY, mapW, mapH);
+      pdf.addImage(gpsMap.dataUri, 'PNG', pageW - marginX - mapW, mapY, mapW, mapH);
     }
 
     y += 0.5;
