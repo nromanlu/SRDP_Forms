@@ -1475,7 +1475,22 @@
 
     Object.entries(data.fields || {}).forEach(([id, v]) => {
       const el = document.getElementById(id);
-      if (el) el.value = v;
+      if (!el) return;
+      el.value = v;
+      // Datum/Einsatzalarm/-beginn/-ende and obmann-datum are flatpickr
+      // fields - flatpickr keeps its own "selectedDates" state separate from
+      // the raw input value. Setting .value directly (above) is enough to
+      // display the restored value, but flatpickr's own state stays out of
+      // sync with it - the next time the picker is opened (or its calendar
+      // otherwise redraws), flatpickr can overwrite the field from that
+      // stale, still-empty state and silently blank it out again. Routing
+      // the same value through flatpickr's own API keeps both in sync from
+      // the moment an edit link is restored, so this can't happen. Fields
+      // without a flatpickr instance (e.g. the read-only Einsatzdauer) are
+      // untouched by this - the .value assignment above already covers them.
+      if (el._flatpickr && typeof el._flatpickr.setDate === 'function') {
+        el._flatpickr.setDate(v, false);
+      }
     });
     if (typeof autoResizeEinsatzbericht === 'function') autoResizeEinsatzbericht();
 
