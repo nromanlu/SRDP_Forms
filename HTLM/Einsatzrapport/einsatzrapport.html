@@ -324,14 +324,23 @@
        Bearbeitet von pushed to the row's right edge (margin-left:auto on
        its .field-row) instead of stacking as its own full-width row
        underneath Datum. Each .field-row is switched from the section's
-       default 150px-label grid to an inline flex pairing (label + control),
-       sized to its own content. */
+       default 150px-label grid to an inline flex pairing, sized to its own
+       content. Bearbeitet von's own field-row additionally stacks its label
+       above the dropdown (flex-direction:column) rather than beside it, for
+       a cleaner look - the whole block still sits at the row's right edge,
+       but the label itself lines up with the dropdown's LEFT edge
+       (align-items:flex-start), not centered/right over it. */
     .obmann-date-row { display: flex; align-items: center; gap: 20px; margin-top: 4px; }
     .obmann-date-row .field-row {
       display: flex; align-items: center; gap: 8px;
       grid-template-columns: none; border-bottom: none; padding: 0;
     }
-    .obmann-date-row .field-row:last-child { margin-left: auto; }
+    .obmann-date-row .field-row:last-child {
+      margin-left: auto;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 3px;
+    }
     /* "Bearbeitet von" selects a name from stored (PIN-protected)
        signatures - see verifyObmannCrewSelection() in the JS. Feedback
        (wrong PIN / remaining attempts / auto-deleted) prints here, always on
@@ -465,9 +474,12 @@
       .billing-label { min-width: 110px; }
 
       /* Datum / Bearbeitet von: back to stacked full-width rows at this
-         width - side by side with a 220px dropdown doesn't fit a phone screen. */
+         width - side by side with a 220px dropdown doesn't fit a phone screen.
+         Bearbeitet von's own label-above-dropdown pair also goes back to
+         left-aligned/full-width here - right-aligning a full-width row reads
+         oddly on a narrow screen. */
       .obmann-date-row { flex-direction: column; align-items: stretch; gap: 4px; }
-      .obmann-date-row .field-row:last-child { margin-left: 0; }
+      .obmann-date-row .field-row:last-child { margin-left: 0; align-items: stretch; }
       .obmann-date-row .field-label { white-space: nowrap; }
     }
 

@@ -33,11 +33,18 @@ const PIN_LENGTH = 6;
 // can reject anything else rather than trusting whatever the client sends.
 const ALLOWED_RANKS = ['Obmann', 'Obmann Stv.', 'Pikettführer', 'Seeretter'];
 
-// After this many wrong PINs (per stored signature) or wrong admin
-// passwords (globally), further attempts are locked out for LOCKOUT_SECONDS.
-// There's no database here, so this is tracked in small JSON files.
+// After this many wrong PINs (per stored signature, when overwriting in
+// unterschriften.html) or wrong admin passwords (globally), further attempts
+// are locked out for LOCKOUT_SECONDS. There's no database here, so this is
+// tracked in small JSON files.
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_SECONDS      = 300; // 5 minutes
+
+// After this many wrong PINs when picking a name in einsatzrapport.html's
+// "Bearbeitet von" dropdown, the stored signature is deleted outright (see
+// signature-verify-pin.php) - a separate, stricter policy from the temp
+// lockout above, so it's its own constant rather than reusing MAX_FAILED_ATTEMPTS.
+const SELECT_MAX_FAILED_ATTEMPTS = 3;
 
 // Where stored signatures live. Protected from direct web access by
 // signatures/.htaccess (Apache) - always go through the PHP endpoints below,

@@ -10,9 +10,11 @@
  * check: wrong attempts here count against their own `selectFailedAttempts`
  * field (not the save flow's `failedAttempts` / `lockedUntil`, which is a
  * temporary 5-minute lockout instead) so the two flows can't interfere with
- * each other. After MAX_FAILED_ATTEMPTS (5) wrong PINs, the stored
+ * each other. After SELECT_MAX_FAILED_ATTEMPTS wrong PINs, the stored
  * signature is deleted outright rather than just locked out - the person
  * would need to re-add it from scratch (with a new PIN) in unterschriften.html.
+ * Earlier wrong attempts only report the remaining count, not that deletion
+ * is coming - only the attempt that actually deletes it says so.
  *
  * Body (JSON): { id: "max-muster", pin: "123456" }
  */
@@ -43,11 +45,11 @@ if ($record === null) {
 if (!isset($record['pinHash']) || !password_verify($pin, $record['pinHash'])) {
     $attempts = (isset($record['selectFailedAttempts']) ? (int) $record['selectFailedAttempts'] : 0) + 1;
 
-    if ($attempts >= MAX_FAILED_ATTEMPTS) {
+    if ($attempts >= SELECT_MAX_FAILED_ATTEMPTS) {
         @unlink($path);
         respond(
             false,
-            'PIN falsch. Diese Signatur wurde nach ' . MAX_FAILED_ATTEMPTS . ' Fehlversuchen automatisch gelöscht.',
+            'PIN falsch. Diese Signatur wurde nach ' . SELECT_MAX_FAILED_ATTEMPTS . ' Fehlversuchen automatisch gelöscht.',
             ['deleted' => true, 'remaining' => 0],
             403
         );
@@ -55,10 +57,10 @@ if (!isset($record['pinHash']) || !password_verify($pin, $record['pinHash'])) {
 
     $record['selectFailedAttempts'] = $attempts;
     write_json_file($path, $record);
-    $remaining = MAX_FAILED_ATTEMPTS - $attempts;
+    $remaining = SELECT_MAX_FAILED_ATTEMPTS - $attempts;
     respond(
         false,
-        "PIN falsch. Noch {$remaining} Versuch(e), bevor die Signatur automatisch gelöscht wird.",
+        "PIN falsch. Noch {$remaining} Versuch(e).",
         ['deleted' => false, 'remaining' => $remaining],
         403
     );
