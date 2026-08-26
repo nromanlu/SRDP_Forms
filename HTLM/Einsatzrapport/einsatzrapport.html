@@ -1003,12 +1003,6 @@
     // <select>-Optionen laufen, sonst gibt es die Crew-Namen als Option noch
     // nicht und der Wert kann nicht gesetzt werden.
     applyEditLinkIfPresent();
-
-    // A restored edit link may have just set "Bearbeitet von" directly
-    // (bypassing the change handler above, which only runs on a live user
-    // pick) - resync the confirmed-value baseline so a later cancel/wrong-PIN
-    // reverts back to the restored name instead of blank.
-    document.getElementById('obmann_crew').dataset.confirmedValue = document.getElementById('obmann_crew').value;
   })();
 
   /* ---- PIN confirmation flow for the "Bearbeitet von" select ---- */
@@ -1051,10 +1045,10 @@
     if (!select) return;
     // The value the field last held with a CONFIRMED (PIN-verified) identity -
     // reverted to on cancel/wrong-PIN/auto-delete, so an unverified pick
-    // never lingers as the field's value. Kept as a data-attribute (not a
-    // closure variable) so applyEditLinkIfPresent() - which sets select.value
-    // directly for a restored "Bearbeitet von" without going through this
-    // change handler - can resync it afterwards; see the call site below.
+    // never lingers as the field's value. Starts blank on every fresh load,
+    // including a restored edit link - serializeForm() deliberately drops
+    // "Bearbeitet von" from the link data, so there's nothing here to
+    // resync; the field always starts unconfirmed and needs a fresh PIN.
     select.dataset.confirmedValue = select.value;
 
     select.addEventListener('change', async () => {
@@ -1452,6 +1446,19 @@
 
     document.querySelectorAll('.page input[type="text"], .page input[type="number"], .page textarea, .page select')
       .forEach(el => { if (el.id) data.fields[el.id] = el.value; });
+
+    // "Bearbeitet von" (obmann_crew) is PIN-gated, same as the signature
+    // strokes/rank it unlocks (see fillForm below and signature-verify-
+    // pin.php) - the selection itself must never ride along in the edit
+    // link either. If it did, reopening the link would show a name already
+    // sitting in the dropdown with no PIN having been entered this session,
+    // which looks confirmed but isn't (the PDF would still correctly print
+    // "Noch nicht bearbeitet" since that depends on obmannCrewConfirmedSignature,
+    // never on the dropdown's value - but the on-screen state would be
+    // misleading, and a cancelled/failed re-pick could silently revert back
+    // to that unverified name instead of blank). Dropping it here forces a
+    // fresh reselect + PIN entry every time an edit link is opened.
+    delete data.fields['obmann_crew'];
 
     document.querySelectorAll('.page input[type="checkbox"]')
       .forEach(el => { if (el.id) data.checks[el.id] = el.checked; });
