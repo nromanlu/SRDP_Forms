@@ -2010,6 +2010,10 @@
     // ---- Boot ----
     hr(false);
     sectionTitle('Boot');
+    // Same two-column split as the Bootsführer/-eigner block below, so
+    // "Kennzeichen" lands exactly above "Bootseigner/in".
+    const colW = (contentW - 10) / 2;
+    const kennzeichenX = marginX + colW + 10;
     // Bootstyp and Kennzeichen share one line (same label/value styling as
     // fieldRow, just placed at two x-offsets instead of stacked).
     ensureSpace(lineH + 3);
@@ -2020,9 +2024,9 @@
     pdf.setTextColor(...ink);
     pdf.text(bootTypText(), marginX + 55, y);
     pdf.setTextColor(51, 51, 51);
-    pdf.text('Kennzeichen', marginX + 100, y);
+    pdf.text('Kennzeichen', kennzeichenX, y);
     pdf.setTextColor(...ink);
-    pdf.text(val('kennzeichen') || '-', marginX + 140, y);
+    pdf.text(val('kennzeichen') || '-', kennzeichenX + 40, y);
     // Small vertical gap before the Bootsführer/-eigner details below.
     y += lineH + 3;
 
@@ -2042,7 +2046,6 @@
       return ly;
     }
     ensureSpace(5 * lineH + 4);
-    const colW = (contentW - 10) / 2;
     const yAfterA = ownerBlock('Bootsführer/in', 'fuehrer-name', 'fuehrer-strasse', 'fuehrer-plz-ort', 'fuehrer-tel', marginX, colW);
     const yAfterB = ownerBlock('Bootseigner/in', 'eigner-name', 'eigner-strasse', 'eigner-plz-ort', 'eigner-tel', marginX + colW + 10, colW);
     y = Math.max(yAfterA, yAfterB) + 3;
