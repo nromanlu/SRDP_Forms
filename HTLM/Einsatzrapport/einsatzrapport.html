@@ -642,11 +642,11 @@
       </div>
       <div class="gps-row">
         <span class="gps-label">Relativ:</span>
-        <input type="text" id="relativ1" placeholder="z.B. 500m von Hafen X" class="gps-relativ-input">
+        <input type="text" id="relativ1" placeholder="z.B. 500m nord von Hafen X" class="gps-relativ-input">
       </div>
       <div class="gps-row">
         <span class="gps-label"></span>
-        <input type="text" id="relativ2" placeholder="z.B. 300m von Boje Y" class="gps-relativ-input">
+        <input type="text" id="relativ2" placeholder="z.B. 300m ost von Boje Y" class="gps-relativ-input">
       </div>
     </div>
     <div class="option-col">
@@ -1593,6 +1593,59 @@
     return v || '-';
   }
 
+  /* ---------------------------------------------------- GPS MAP SNAPSHOT ---------------------------------------------------- */
+  // The GPS N/O fields are entered as degrees + decimal minutes (e.g. 47°
+  // 12.118' N) - converts them to plain decimal degrees for the map API
+  // (lat = deg + min/60). Returns null if either pair is incomplete, so a
+  // half-filled GPS section simply skips the map instead of requesting one
+  // centered on 0,0.
+  function gpsDecimalCoords() {
+    const nDeg = parseFloat(val('gps-n-deg'));
+    const nMin = parseFloat(val('gps-n-min'));
+    const oDeg = parseFloat(val('gps-o-deg'));
+    const oMin = parseFloat(val('gps-o-min'));
+    if (![nDeg, nMin, oDeg, oMin].every(Number.isFinite)) return null;
+    return { lat: nDeg + nMin / 60, lon: oDeg + oMin / 60 };
+  }
+
+  // Fetches a small OpenStreetMap snapshot centered on the reported position
+  // from map-snapshot.php (a server-side proxy - see that file for why the
+  // Geoapify API key lives there and not in this client-side code) and
+  // returns { dataUri, width, height } ready for pdf.addImage() - width/
+  // height are the image's real pixel size (read back via an Image element
+  // rather than hardcoded here) so the PDF can size it at the right aspect
+  // ratio even if map-snapshot.php's requested dimensions ever change.
+  // Returns null - never throws - on a blank GPS section, no connectivity,
+  // or any API error, so a missing map never blocks generating the actual
+  // report (same graceful-degradation pattern as loadCrewNames()/
+  // loadSignatureNames() above).
+  async function fetchGpsMapImage() {
+    const coords = gpsDecimalCoords();
+    if (!coords) return null;
+    try {
+      const res = await fetch(`map-snapshot.php?lat=${coords.lat}&lon=${coords.lon}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      if (!blob.type.startsWith('image/')) throw new Error('Unerwarteter Inhaltstyp');
+      const dataUri = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(blob);
+      });
+      const { width, height } = await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+        img.onerror = () => reject(new Error('Bild konnte nicht gelesen werden'));
+        img.src = dataUri;
+      });
+      return { dataUri, width, height };
+    } catch (e) {
+      console.error('GPS-Kartenausschnitt (map-snapshot.php) konnte nicht geladen werden:', e);
+      return null;
+    }
+  }
+
   // Same idea, for Vorgefunden: Boot's <select> - "nicht gelistet" prints the
   // typed description instead of the literal option text.
   function vorgefundenBootText() {
@@ -1749,10 +1802,15 @@
       y += 5;
     }
 
-    function fieldRow(label, value) {
+    // maxWidth (optional) narrows the value column - used by the
+    // Gemeindegebiet & Position section to leave room for the GPS map
+    // sitting to the right of the text there; every other call site omits
+    // it and gets the normal full-width column.
+    function fieldRow(label, value, maxWidth) {
       pdf.setFont('LiberationSans', 'normal');
       pdf.setFontSize(9);
-      const lines = pdf.splitTextToSize(value, contentW - 55);
+      const availWidth = (typeof maxWidth === 'number') ? maxWidth : (contentW - 55);
+      const lines = pdf.splitTextToSize(value, availWidth);
       ensureSpace(lines.length * lineH + 2);
       pdf.setTextColor(51, 51, 51);
       pdf.text(label, marginX, y);
@@ -1992,18 +2050,61 @@
     hr(false);
 
     // ---- Gemeindegebiet & Position ----
+    // Small OSM snapshot of the reported position, when GPS was actually
+    // filled in and map-snapshot.php could reach Geoapify - fetched before
+    // the section starts so its width can be reserved from every row's
+    // value column, and its height can be matched to the section's total
+    // height afterwards. See fetchGpsMapImage() for the graceful no-map
+    // fallback (blank GPS, offline, API error - the section then lays out
+    // exactly as it did before this existed, full-width, no reserved gap).
+    const gpsMap = await fetchGpsMapImage();
+    const gpsMapGap = 4;
+    // A fixed column width, not one derived from the map's eventual height -
+    // deriving it from the height would be circular, since narrowing the
+    // value columns can itself change how many lines they wrap to (e.g. a
+    // long "Weitere Organisationen" list), which changes the section's
+    // height. 55mm is generous enough that the actual image (sized from the
+    // section's real height below) very rarely needs to be capped by it.
+    const gpsMapReservedWidth = 55;
+    const rowValueWidth = gpsMap ? (contentW - 55 - gpsMapReservedWidth - gpsMapGap) : (contentW - 55);
+
     sectionTitle('Gemeindegebiet & Position');
-    fieldRow('Gemeindegebiet', gemeindeText());
+    const gemeindePositionTopY = y;
+    const pageCountBeforeSection = pdf.internal.getNumberOfPages();
+    fieldRow('Gemeindegebiet', gemeindeText(), rowValueWidth);
     const gpsN = (val('gps-n-deg') || val('gps-n-min')) ? `${val('gps-n-deg') || '0'}° ${val('gps-n-min') || '0'}' N` : '';
     const gpsO = (val('gps-o-deg') || val('gps-o-min')) ? `${val('gps-o-deg') || '0'}° ${val('gps-o-min') || '0'}' O` : '';
     const gpsText = [gpsN, gpsO].filter(Boolean).join('  /  ');
-    fieldRow('Position (GPS)', gpsText || '-');
+    fieldRow('Position (GPS)', gpsText || '-', rowValueWidth);
     const relativText = [val('relativ1'), val('relativ2')].filter(Boolean).join('\n');
-    fieldRow('Relativ', relativText || '-');
+    fieldRow('Relativ', relativText || '-', rowValueWidth);
     fieldRow('Weitere Organisationen', checkedListWithOther([
       ['org-seepo', 'Seepo SZ'], ['org-kapo', 'Kapo ZH'], ['org-arzt', 'Arzt / Ambulanz'],
       ['org-feuerwehr', 'Feuerwehr'], ['org-rega', 'Rega'],
-    ], 'org-andere', 'org-andere-detail'));
+    ], 'org-andere', 'org-andere-detail'), rowValueWidth);
+
+    // Draw the map spanning the height of the text block just printed,
+    // aligned to the content area's right edge - but only if the whole
+    // section landed on one page. A page break partway through (an
+    // unusually long "Weitere Organisationen" list, say) would put the
+    // section's top and bottom on different pages, where "match the
+    // section's height" is meaningless - skip the map rather than draw
+    // something wrong in that rare case.
+    if (gpsMap && pdf.internal.getNumberOfPages() === pageCountBeforeSection) {
+      let mapH = y - gemeindePositionTopY - 1;
+      let mapW = mapH * (gpsMap.width / gpsMap.height);
+      // The reserved column is generous on purpose (see gpsMapReservedWidth
+      // above), so this normally never triggers - it's a safety cap for the
+      // rare case the section still grew wider than expected, so the image
+      // can never overlap the text column, at the cost of then being a
+      // little shorter than the section instead of distorted.
+      if (mapW > gpsMapReservedWidth) {
+        mapW = gpsMapReservedWidth;
+        mapH = mapW * (gpsMap.height / gpsMap.width);
+      }
+      pdf.addImage(gpsMap.dataUri, 'PNG', pageW - marginX - mapW, gemeindePositionTopY, mapW, mapH);
+    }
+
     y += 0.5;
     hr(false);
 
