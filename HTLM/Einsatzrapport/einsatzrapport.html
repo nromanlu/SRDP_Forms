@@ -126,11 +126,16 @@
     }
     .crew-controls select,
     .crew-controls input { width: 100%; }
-    .crew-controls .crew-select:nth-child(1) { grid-column: 1; grid-row: 1; }
-    .crew-controls .crew-select:nth-child(2) { grid-column: 2; grid-row: 1; }
-    .crew-controls .crew-select:nth-child(3) { grid-column: 3; grid-row: 1; }
-    .crew-controls .crew-select:nth-child(4) { grid-column: 1; grid-row: 2; }
-    .crew-controls .crew-manual { grid-column: 2 / span 2; grid-row: 2; }
+    /* Progressive reveal: crew_c/crew_d start hidden (see updateCrewVisibility() in
+       the script below) and only appear once every dropdown before them is filled;
+       once all pre-declared dropdowns are full, more are created on the fly, so
+       Mannschaft isn't capped at any fixed number of crew. Positioning is left
+       entirely to the grid's normal auto-flow (no per-field nth-child pinning, no
+       forced span on the manual entry) - a hidden field simply leaves no gap, and
+       the manual entry just fills whatever slot is next after the dropdowns: shares
+       a row if one still has room, wraps to a fresh row via normal grid flow if not.
+       No row count is capped or forced either way. */
+    .crew-controls .crew-select.crew-hidden { display: none; }
 
     /* ---------------------------------------------------- GENERIC INPUTS ---------------------------------------------------- */
     input[type="text"],
@@ -475,13 +480,9 @@
       /* Time fields: 2x2 grid, same reflow idea as the crew dropdowns below. */
       .time-fields-grid { grid-template-columns: repeat(2, 1fr); }
 
-      /* Crew dropdowns: 2x2 grid, manual-entry field as its own full-width 3rd line */
+      /* Crew dropdowns: 2 columns, auto-flowing rows (see the default .crew-controls
+         rules above) - manual-entry field still forces its own full-width line. */
       .crew-controls { grid-template-columns: repeat(2, 1fr); }
-      .crew-controls .crew-select:nth-child(1) { grid-column: 1; grid-row: 1; }
-      .crew-controls .crew-select:nth-child(2) { grid-column: 2; grid-row: 1; }
-      .crew-controls .crew-select:nth-child(3) { grid-column: 1; grid-row: 2; }
-      .crew-controls .crew-select:nth-child(4) { grid-column: 2; grid-row: 2; }
-      .crew-controls .crew-manual { grid-column: 1 / span 2; grid-row: 3; }
 
       /* Option matrix (Aufgebot/Art/Wetter/Windwarnung and Gemeinde/Position/Organisationen):
          4 (or 3) narrow columns are illegible on a phone - fold down to a 2-column grid,
@@ -579,10 +580,10 @@
         <select id="crew_b" class="crew-select">
           <option value="">Crew hinzufügen</option>
         </select>
-        <select id="crew_c" class="crew-select">
+        <select id="crew_c" class="crew-select crew-hidden">
           <option value="">Crew hinzufügen</option>
         </select>
-        <select id="crew_d" class="crew-select">
+        <select id="crew_d" class="crew-select crew-hidden">
           <option value="">Crew hinzufügen</option>
         </select>
         <input type="text" id="crew_e" class="crew-manual" placeholder="Crew hinzufügen">
@@ -941,10 +942,179 @@
     select.addEventListener('change', () => updateSelectPlaceholderState(select));
   }
 
+  // sig_crew (Protokollführer/-in) deliberately isn't populated from the full
+  // crew.html list here - it's built from whoever is actually selected in
+  // Mannschaft instead, see updateSigCrewOptions() below.
   const CREW_SELECT_IDS = [
-    'crew_a', 'crew_b', 'crew_c', 'crew_d',
-    'sig_crew'
+    'crew_a', 'crew_b', 'crew_c', 'crew_d'
   ];
+
+  /* ---------------------------------------------------- CREW PROGRESSIVE REVEAL ---------------------------------------------------- */
+  // Mannschaft starts with just crew_a/crew_b (+ the always-visible manual crew_e
+  // field) - crew_c and crew_d carry the .crew-hidden class in the HTML and stay
+  // display:none until needed, revealed one at a time as every dropdown shown so far
+  // gets a value. Not capped at crew_d either: once every pre-declared dropdown is
+  // full, a fresh one is created on the fly (see insertCrewDropdown()) - Mannschaft
+  // can grow to however many names are needed. The manual entry no longer gets a
+  // forced full-width grid span (dropped from the CSS), so it's now plain grid
+  // content like the dropdowns and just flows into whatever slot is next after them:
+  // shares a row if one has space, wraps to
+  // its own row via normal grid auto-flow if not. Reveal-only/one-way on purpose:
+  // clearing a dropdown afterwards doesn't hide a later one again, so a half-cleared
+  // row never makes an already-filled field vanish, and a newly-created dropdown is
+  // never removed just because it's still empty.
+  const CREW_INITIAL_VISIBLE_COUNT = 2;
+  let crewExtraCount = 0;
+
+  function crewDropdownEls() {
+    return Array.from(document.querySelectorAll('.crew-controls .crew-select'));
+  }
+
+  // Creates one more dropdown beyond the pre-declared crew_a-d, identical in
+  // behaviour (same option list, same placeholder styling), inserted right before
+  // the manual entry so it keeps sitting last. IDs are crew_extra_1, crew_extra_2,
+  // ... - deliberately not continuing the crew_e/f/... letter scheme since crew_e is
+  // already the manual field's id.
+  function insertCrewDropdown() {
+    crewExtraCount++;
+    const id = 'crew_extra_' + crewExtraCount;
+    const select = document.createElement('select');
+    select.id = id;
+    select.className = 'crew-select';
+    const placeholderOpt = document.createElement('option');
+    placeholderOpt.value = '';
+    placeholderOpt.textContent = 'Crew hinzufügen';
+    select.appendChild(placeholderOpt);
+
+    const manual = document.getElementById('crew_e');
+    manual.parentNode.insertBefore(select, manual);
+
+    populateCrewSelect(id);
+    wireSelectPlaceholder(id);
+    select.addEventListener('change', updateCrewVisibility);
+    return select;
+  }
+
+  function updateCrewVisibility() {
+    // Loop rather than a single pass: revealing a hidden field, or creating a new
+    // one, can immediately make the "are all visible dropdowns filled" check true
+    // again (e.g. a restored edit link can fill several at once) - keep going until
+    // nothing changes. insertCrewDropdown() always adds an empty field, so this is
+    // guaranteed to terminate.
+    let changed = true;
+    while (changed) {
+      changed = false;
+      const dropdowns = crewDropdownEls();
+      const hidden = dropdowns.find(el => el.classList.contains('crew-hidden'));
+
+      if (hidden) {
+        const visible = dropdowns.filter(el => !el.classList.contains('crew-hidden'));
+        const allVisibleFilled = visible.length > 0 && visible.every(el => el.value !== '');
+        // Also reveal if this field itself already carries a value - covers a
+        // report restored via the "Rapport bearbeiten" edit link (fillForm sets
+        // .value directly, even on a still-hidden field), so a previously-saved
+        // crew_c/crew_d is never left populated-but-invisible.
+        if (allVisibleFilled || hidden.value !== '') {
+          hidden.classList.remove('crew-hidden');
+          changed = true;
+        }
+        continue;
+      }
+
+      const allFilled = dropdowns.length >= CREW_INITIAL_VISIBLE_COUNT && dropdowns.every(el => el.value !== '');
+      if (allFilled) {
+        insertCrewDropdown();
+        changed = true;
+      }
+    }
+
+    updateCrewManualSpan();
+    updateSigCrewOptions();
+  }
+
+  // Every name currently selected in one of Mannschaft's dropdowns (crew_a-d plus
+  // any crew_extra_N) - in DOM order, de-duplicated. Deliberately excludes the
+  // manual entry (crew_e): Protokollführer/-in must be picked from a stored crew
+  // name, not a freehand-typed one (see updateSigCrewOptions() below). Kept
+  // separate from crewList() (which also exists for the PDF, and does include the
+  // manual entry) since that one doesn't need to de-duplicate.
+  function mannschaftDropdownValues() {
+    const values = crewDropdownEls().map(el => el.value.trim()).filter(v => v);
+    return Array.from(new Set(values));
+  }
+
+  // Protokollführer/-in (sig_crew) can only sensibly be someone actually on this
+  // callout, so its options are limited to whoever is currently selected in
+  // Mannschaft's dropdowns instead of the full crew.html roster - rebuilt every
+  // time a Mannschaft dropdown changes (called from updateCrewVisibility() above).
+  // Options are tagged with data-crew-option so they can be cleared and rebuilt
+  // without touching the placeholder option. If the previously-selected
+  // Protokollführer is no longer in Mannschaft (a dropdown got changed/cleared),
+  // the selection is dropped back to the placeholder rather than silently keeping
+  // a name that's no longer part of the crew.
+  function updateSigCrewOptions() {
+    const select = document.getElementById('sig_crew');
+    if (!select) return;
+    const previousValue = select.value;
+    Array.from(select.querySelectorAll('option[data-crew-option]')).forEach(opt => opt.remove());
+    mannschaftDropdownValues().forEach(name => {
+      const option = document.createElement('option');
+      option.value = name;
+      option.textContent = name;
+      option.dataset.crewOption = '1';
+      select.appendChild(option);
+    });
+    select.value = Array.from(select.options).some(o => o.value === previousValue) ? previousValue : '';
+    if (typeof updateSelectPlaceholderState === 'function') updateSelectPlaceholderState(select);
+  }
+
+  // .crew-controls' column count at the current viewport - kept in one place so it
+  // always matches the ≤600px breakpoint in the CSS above.
+  function crewGridColumnCount() {
+    return window.matchMedia('(max-width: 600px)').matches ? 2 : 3;
+  }
+
+  // The manual entry (crew_e) has no fixed grid position of its own - it just lands
+  // wherever grid auto-flow puts it, right after however many dropdowns are
+  // currently visible. Left alone it would only fill one column, though, leaving
+  // the rest of that row visibly empty whenever it doesn't happen to land in the
+  // first column. This computes which column it actually lands in and sets an
+  // explicit `start / -1` span so it always stretches to the last column instead -
+  // full width when it's alone on a fresh row, otherwise just filling out
+  // whatever's left next to the last dropdown(s) sharing its row. Needs
+  // recomputing whenever the number of visible dropdowns changes (handled by the
+  // call at the end of updateCrewVisibility() above) and whenever the column count
+  // itself changes, i.e. crossing the phone breakpoint on resize/rotation.
+  function updateCrewManualSpan() {
+    const manual = document.getElementById('crew_e');
+    if (!manual) return;
+    const visibleCount = crewDropdownEls().filter(el => !el.classList.contains('crew-hidden')).length;
+    const columns = crewGridColumnCount();
+    const startCol = (visibleCount % columns) + 1;
+    manual.style.gridColumn = startCol + ' / -1';
+  }
+
+  // Pre-creates however many crew_extra_N dropdowns a restored edit link's data
+  // needs, before fillForm() runs - fillForm() looks fields up by id and silently
+  // skips ids that don't exist yet, so without this a crew list grown past crew_d
+  // would come back from an edit link one member short.
+  function ensureCrewDropdownsForRestoredData(data) {
+    let maxExtra = 0;
+    Object.keys((data && data.fields) || {}).forEach(id => {
+      const m = /^crew_extra_(\d+)$/.exec(id);
+      if (m) maxExtra = Math.max(maxExtra, parseInt(m[1], 10));
+    });
+    while (crewExtraCount < maxExtra) insertCrewDropdown();
+  }
+
+  function wireCrewVisibility() {
+    crewDropdownEls().forEach(el => el.addEventListener('change', updateCrewVisibility));
+    updateCrewVisibility();
+    // Re-fit the manual entry's span if the viewport crosses the 600px breakpoint
+    // (column count changes from 3 to 2 or back) - e.g. an iPad rotating, or a
+    // desktop browser window being resized.
+    window.addEventListener('resize', updateCrewManualSpan);
+  }
 
   /* ---------------------------------------------------- BEARBEITET VON (stored, PIN-protected signatures) ---------------------------------------------------- */
   // "Bearbeitet von" no longer draws from the general crew.html list like the
@@ -1004,9 +1174,14 @@
       populateCrewSelect(id);
       wireSelectPlaceholder(id);
     });
+    // sig_crew's options come from Mannschaft (see updateSigCrewOptions()), not
+    // from crew.html, so it only needs the placeholder-styling wiring here -
+    // wireCrewVisibility() below populates its actual options.
+    wireSelectPlaceholder('sig_crew');
     populateObmannCrewSelect();
     wireSelectPlaceholder('obmann_crew');
     wireObmannCrewVerification();
+    wireCrewVisibility();
 
     // Nach dem Befuellen der Crew-Dropdowns pruefen, ob die Seite ueber einen
     // "Rapport bearbeiten"-Link mit angehaengten Formulardaten geoeffnet wurde
@@ -1435,6 +1610,16 @@
           updateSelectPlaceholderState(select);
         }
       });
+      // Collapse the crew dropdowns back to the initial crew_a/crew_b-only state
+      // instead of leaving crew_c/crew_d (or any crew_extra_N created on the fly
+      // while filling out the form) revealed-but-blank after a reset.
+      document.querySelectorAll('.crew-controls .crew-select[id^="crew_extra_"]').forEach(el => el.remove());
+      crewExtraCount = 0;
+      document.querySelectorAll('.crew-controls .crew-select').forEach((el, i) => {
+        if (i >= CREW_INITIAL_VISIBLE_COUNT) el.classList.add('crew-hidden');
+      });
+      if (typeof updateCrewManualSpan === 'function') updateCrewManualSpan();
+      if (typeof updateSigCrewOptions === 'function') updateSigCrewOptions();
       obmannCrewConfirmedSignature = null;
       if (typeof setObmannCrewStatus === 'function') setObmannCrewStatus('', '');
       document.getElementById('einsatzbericht').style.height = '';
@@ -1532,6 +1717,21 @@
     document.querySelectorAll('select[id]').forEach(s => {
       if (typeof updateSelectPlaceholderState === 'function') updateSelectPlaceholderState(s);
     });
+    // Restored crew_c/crew_d values (from a "Rapport bearbeiten" edit link) are set
+    // above even while still display:none - reveal them now so a previously-filled
+    // slot doesn't come back invisible. This also rebuilds sig_crew's (Protokollführer/
+    // -in) options from the now-restored Mannschaft values - but the loop above
+    // already tried (and, since sig_crew's options were still the pre-restore/empty
+    // ones at that point, failed) to set sig_crew's own value, so it has to be
+    // re-applied now that the correct options actually exist.
+    if (typeof updateCrewVisibility === 'function') updateCrewVisibility();
+    if (data.fields && Object.prototype.hasOwnProperty.call(data.fields, 'sig_crew')) {
+      const sigCrewEl = document.getElementById('sig_crew');
+      if (sigCrewEl) {
+        sigCrewEl.value = data.fields['sig_crew'];
+        if (typeof updateSelectPlaceholderState === 'function') updateSelectPlaceholderState(sigCrewEl);
+      }
+    }
     if (typeof updateBillingTotal === 'function') updateBillingTotal();
     if (typeof updateEinsatzdauer === 'function') updateEinsatzdauer();
     if (typeof updateVorgefundenBootDetail === 'function') updateVorgefundenBootDetail();
@@ -1566,7 +1766,12 @@
     if (!location.hash.startsWith('#data=')) return;
     const encoded = location.hash.slice('#data='.length);
     const data = decodeFormData(encoded);
-    if (data) fillForm(data);
+    if (!data) return;
+    // Crew dropdowns beyond crew_a-d only exist once created on the fly (see
+    // insertCrewDropdown()) - a saved report with a bigger crew than that needs
+    // those extra fields created before fillForm() can restore their values.
+    if (typeof ensureCrewDropdownsForRestoredData === 'function') ensureCrewDropdownsForRestoredData(data);
+    fillForm(data);
   }
 
   /* ---------------------------------------------------- PDF GENERATION (VECTOR) ---------------------------------------------------- */
@@ -1673,8 +1878,12 @@
   }
 
   function crewList() {
-    return ['a', 'b', 'c', 'd', 'e']
-      .map(letter => val(`crew_${letter}`))
+    // Reads every dropdown currently in the Mannschaft grid (crew_a-d plus any
+    // crew_extra_N created on the fly - see insertCrewDropdown()), in DOM order,
+    // followed by the manual entry - rather than a fixed id list, since Mannschaft
+    // is no longer capped at a fixed number of crew.
+    return Array.from(document.querySelectorAll('.crew-controls .crew-select, .crew-controls .crew-manual'))
+      .map(el => el.value.trim())
       .filter(v => v)
       .join(', ');
   }
