@@ -891,6 +891,32 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 
+<!-- flatpickr must load and initialize BEFORE the main script block below, not after it
+     (as it originally did, at the very end of the page). The main script's crew-loading
+     IIFE calls applyEditLinkIfPresent() -> fillForm() as soon as its own (same-origin,
+     usually fast) fetch of ../Crew/crew.html (and the signature-names fetch) resolves -
+     if that happened before this external, cross-origin flatpickr script had finished
+     loading, fillForm()'s `el._flatpickr && el._flatpickr.setDate(...)` guard would find
+     no el._flatpickr yet on the date/time inputs and silently skip syncing flatpickr's
+     internal state, even though that sync code itself is correct. The field would still
+     show the restored text at that instant (a bare .value assignment always happens
+     first), but flatpickr - now unaware any date was ever selected - visually clears it
+     back out the next time it redraws (e.g. the moment the field is merely tapped/
+     focused), which is exactly the "dates and times aren't retained" symptom reported
+     after opening a "Rapport bearbeiten" link. Moving these three tags here, before the
+     main inline script, makes their execution block that script's start until flatpickr
+     is fully ready, so el._flatpickr always exists by the time the edit link is restored
+     - deterministically, regardless of how the network requests happen to race. -->
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/de.js"></script>
+<script>
+  flatpickr("#datum", { dateFormat: "d.m.Y", locale: "de" });
+  flatpickr("#obmann-datum", { dateFormat: "d.m.Y", locale: "de" });
+  flatpickr("#einsatzbeginn", { enableTime: true, noCalendar: true, dateFormat: "H:i", time_24hr: true, locale: "de" });
+  flatpickr("#einsatzende", { enableTime: true, noCalendar: true, dateFormat: "H:i", time_24hr: true, locale: "de" });
+  flatpickr("#einsatzalarm", { enableTime: true, noCalendar: true, dateFormat: "H:i", time_24hr: true, locale: "de" });
+</script>
+
 <script>
  /* ==================================================== SCRIPTS ==================================================== */
  /* ---------------------------------------------------- LIBERATION SANS (embedded, Unicode-safe) ---------------------------------------------------- */
@@ -2588,15 +2614,6 @@
       resetBtn.disabled = false;
     }
   }
-</script>
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/de.js"></script>
-<script>
-  flatpickr("#datum", { dateFormat: "d.m.Y", locale: "de" });
-  flatpickr("#obmann-datum", { dateFormat: "d.m.Y", locale: "de" });
-  flatpickr("#einsatzbeginn", { enableTime: true, noCalendar: true, dateFormat: "H:i", time_24hr: true, locale: "de" });
-  flatpickr("#einsatzende", { enableTime: true, noCalendar: true, dateFormat: "H:i", time_24hr: true, locale: "de" });
-  flatpickr("#einsatzalarm", { enableTime: true, noCalendar: true, dateFormat: "H:i", time_24hr: true, locale: "de" });
 </script>
 </body>
 </html>

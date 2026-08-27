@@ -770,6 +770,80 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 
+<!-- flatpickr must load and initialize BEFORE the main script block below, not after it
+     (as it originally did, at the very end of the page). The main script's crew-loading
+     IIFE calls applyEditLinkIfPresent() -> fillForm() as soon as its own (same-origin,
+     usually fast) fetch of ../Crew/crew.html resolves - if that happened before this
+     external, cross-origin flatpickr script had finished loading, fillForm() would find
+     no el._flatpickr yet on the date/time inputs and silently skip syncing flatpickr's
+     internal state, leaving it emptied of any selected date. The field would still show
+     the restored text at that instant (a bare .value assignment always happens first),
+     but flatpickr - now unaware any date was ever selected - visually clears it back out
+     the next time it redraws (e.g. the moment the field is merely tapped/focused), which
+     is exactly the "dates and times aren't retained" symptom reported after opening a
+     "Rapport bearbeiten" link. Moving these three tags here, before the main inline
+     script, makes their execution block that script's start until flatpickr is fully
+     ready, so el._flatpickr always exists by the time the edit link is restored -
+     deterministically, regardless of how the two network requests happen to race. -->
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/de.js"></script>
+<script>
+  flatpickr("#datum1", {
+    dateFormat: "d.m.Y",
+    locale: "de"
+  });
+  flatpickr("#datum2", {
+    dateFormat: "d.m.Y",
+    locale: "de"
+  });
+  flatpickr("#datum3", {
+    dateFormat: "d.m.Y",
+    locale: "de"
+  });
+  flatpickr("#von1", {
+    enableTime: true,
+    noCalendar: true,
+    dateFormat: "H:i",
+    time_24hr: true,
+    locale: "de"
+  });
+  flatpickr("#bis1", {
+    enableTime: true,
+    noCalendar: true,
+    dateFormat: "H:i",
+    time_24hr: true,
+    locale: "de"
+  });
+  flatpickr("#von2", {
+    enableTime: true,
+    noCalendar: true,
+    dateFormat: "H:i",
+    time_24hr: true,
+    locale: "de"
+  });
+  flatpickr("#bis2", {
+    enableTime: true,
+    noCalendar: true,
+    dateFormat: "H:i",
+    time_24hr: true,
+    locale: "de"
+  });
+  flatpickr("#von3", {
+    enableTime: true,
+    noCalendar: true,
+    dateFormat: "H:i",
+    time_24hr: true,
+    locale: "de"
+  });
+  flatpickr("#bis3", {
+    enableTime: true,
+    noCalendar: true,
+    dateFormat: "H:i",
+    time_24hr: true,
+    locale: "de"
+  });
+</script>
+
 <script>
  /* ==================================================== SCRIPTS ==================================================== */
  /* ---------------------------------------------------- CrewNames ---------------------------------------------------- */
@@ -1289,7 +1363,21 @@
 
     Object.entries(data.fields || {}).forEach(([id, v]) => {
       const el = document.getElementById(id);
-      if (el) el.value = v;
+      if (!el) return;
+      el.value = v;
+      // datum1-3/von1-3/bis1-3 are flatpickr fields - flatpickr keeps its own
+      // "selectedDates" state separate from the raw input value. Setting .value
+      // directly (above) is enough to display the restored value, but flatpickr's
+      // own state stays out of sync with it - the next time the field is focused/
+      // redrawn, flatpickr can overwrite it from that stale, still-empty state and
+      // silently blank it back out. Routing the same value through flatpickr's own
+      // API keeps both in sync from the moment an edit link is restored. Fields
+      // without a flatpickr instance are untouched by this - the .value assignment
+      // above already covers them. (Ported from einsatzrapport.html's fillForm(),
+      // which already had this fix - this file was missing it entirely.)
+      if (el._flatpickr && typeof el._flatpickr.setDate === 'function') {
+        el._flatpickr.setDate(v, false);
+      }
     });
     if (typeof autoResizeDiverses === 'function') autoResizeDiverses();
 
@@ -1857,64 +1945,6 @@
       resetBtn.disabled = false;
     }
   }
-</script>
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/de.js"></script>
-<script>
-  flatpickr("#datum1", {
-    dateFormat: "d.m.Y",
-    locale: "de"
-  });
-  flatpickr("#datum2", {
-    dateFormat: "d.m.Y",
-    locale: "de"
-  });
-  flatpickr("#datum3", {
-    dateFormat: "d.m.Y",
-    locale: "de"
-  });
-  flatpickr("#von1", {
-    enableTime: true,
-    noCalendar: true,
-    dateFormat: "H:i",
-    time_24hr: true,
-    locale: "de"
-  });
-  flatpickr("#bis1", {
-    enableTime: true,
-    noCalendar: true,
-    dateFormat: "H:i",
-    time_24hr: true,
-    locale: "de"
-  });
-  flatpickr("#von2", {
-    enableTime: true,
-    noCalendar: true,
-    dateFormat: "H:i",
-    time_24hr: true,
-    locale: "de"
-  });
-  flatpickr("#bis2", {
-    enableTime: true,
-    noCalendar: true,
-    dateFormat: "H:i",
-    time_24hr: true,
-    locale: "de"
-  });
-  flatpickr("#von3", {
-    enableTime: true,
-    noCalendar: true,
-    dateFormat: "H:i",
-    time_24hr: true,
-    locale: "de"
-  });
-  flatpickr("#bis3", {
-    enableTime: true,
-    noCalendar: true,
-    dateFormat: "H:i",
-    time_24hr: true,
-    locale: "de"
-  });
 </script>
 </body>
 </html>
