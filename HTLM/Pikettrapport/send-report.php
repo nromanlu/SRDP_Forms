@@ -12,6 +12,14 @@
  * e.g. to fix a typo, without needing to type everything again. The link is
  * NOT included in the PDF itself — only in the email body.
  *
+ * An optional second attachment ("Tankquittung" fuel receipt photo, field name
+ * "receipt") is accepted the same way as the PDF: read straight out of PHP's own
+ * upload temp file into the outgoing email and never written anywhere persistent
+ * (no move_uploaded_file() into a folder, unlike the signature tool's PIN-protected
+ * signatures/ storage) - once this script returns, nothing of it remains on the
+ * server. It's entirely optional; a request with no "receipt" file sends exactly
+ * like before.
+ *
  * Deploy this file in the SAME folder as pikettrapport.html so the relative
  * fetch('send-report.php') call in the form finds it. It ships through the
  * existing GitHub Actions FTP pipeline automatically, just like the HTML file.
@@ -29,7 +37,8 @@ $RECIPIENT   = 'n.romanlu@gmail.com';
 // on nr-works.dev, use it here instead.
 $FROM_ADDR   = 'noreply@nr-works.ch';
 $FROM_NAME   = 'Pikettrapport SRDP';
-$MAX_PDF_MB  = 10;
+$MAX_PDF_MB     = 10;
+$MAX_RECEIPT_MB = 8;
 // Edit links only make sense if they point back at nr-works.ch. Anything else
 // (e.g. a manipulated value) is dropped rather than emailed out.
 $ALLOWED_EDIT_URL_HOSTS = ['nr-works.ch', 'www.nr-works.ch'];
@@ -66,6 +75,39 @@ if (function_exists('finfo_open')) {
 $pdfData = file_get_contents($_FILES['pdf']['tmp_name']);
 if ($pdfData === false) {
     respond(false, 'Datei konnte nicht gelesen werden.', 500);
+}
+
+// ---------------------------------------------------------------------------
+// Optional "Tankquittung" fuel receipt photo. Entirely optional - a request
+// without it (the normal case whenever nobody bunkered fuel this callout) sends
+// exactly like before. Read from PHP's own upload temp file only - never moved
+// to a persistent folder, so there's nothing left on the server once this
+// script's response is sent, matching how the PDF itself is already handled.
+// ---------------------------------------------------------------------------
+$receiptData = null;
+$receiptContentType = null;
+if (isset($_FILES['receipt']) && $_FILES['receipt']['error'] === UPLOAD_ERR_OK) {
+    if ($_FILES['receipt']['size'] > $MAX_RECEIPT_MB * 1024 * 1024) {
+        respond(false, 'Tankquittung ist zu gross.', 400);
+    }
+
+    $receiptType = null;
+    if (function_exists('finfo_open')) {
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $receiptType = finfo_file($finfo, $_FILES['receipt']['tmp_name']);
+        finfo_close($finfo);
+    }
+    $allowedReceiptTypes = ['image/jpeg' => 'jpg', 'image/png' => 'png'];
+    if ($receiptType === null || !isset($allowedReceiptTypes[$receiptType])) {
+        respond(false, 'Tankquittung: ungültiger Dateityp.', 400);
+    }
+
+    $receiptData = file_get_contents($_FILES['receipt']['tmp_name']);
+    if ($receiptData === false) {
+        respond(false, 'Tankquittung konnte nicht gelesen werden.', 500);
+    }
+    $receiptContentType = $receiptType;
+    $receiptExtension   = $allowedReceiptTypes[$receiptType];
 }
 
 $subject        = isset($_POST['subject']) ? trim($_POST['subject']) : 'Pikettrapport';
@@ -156,7 +198,18 @@ $attachment .= "Content-Transfer-Encoding: base64\r\n";
 $attachment .= "Content-Disposition: attachment; filename=\"{$attachmentName}\"\r\n\r\n";
 $attachment .= chunk_split(base64_encode($pdfData)) . "\r\n";
 
-$message = $alternative . $attachment . "--{$mixedBoundary}--";
+// --- Tankquittung attachment (optional - only present if a receipt was sent) ---
+$receiptPart = '';
+if ($receiptData !== null) {
+    $receiptName = 'Tankquittung.' . $receiptExtension;
+    $receiptPart  = "--{$mixedBoundary}\r\n";
+    $receiptPart .= "Content-Type: {$receiptContentType}; name=\"{$receiptName}\"\r\n";
+    $receiptPart .= "Content-Transfer-Encoding: base64\r\n";
+    $receiptPart .= "Content-Disposition: attachment; filename=\"{$receiptName}\"\r\n\r\n";
+    $receiptPart .= chunk_split(base64_encode($receiptData)) . "\r\n";
+}
+
+$message = $alternative . $attachment . $receiptPart . "--{$mixedBoundary}--";
 
 // RFC 2047 encode the subject so umlauts (ä/ö/ü) render correctly in the recipient's inbox.
 $encodedSubject = '=?UTF-8?B?' . base64_encode($subject) . '?=';

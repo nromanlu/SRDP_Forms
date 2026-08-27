@@ -168,6 +168,67 @@
     .field-label { font-size: 11px; color: #333; }
     .field-control { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
+    /* ---------------------------------------------------- TANKQUITTUNG (Beleg-Foto) ---------------------------------------------------- */
+    /* "Tankquittung" opens the device's photo picker with accept="image/*" and no
+       capture attribute, so iOS/iPadOS Safari offers "Scan Documents" alongside
+       "Take Photo" / "Photo Library" - Scan Documents does its own edge detection,
+       perspective correction and cropping, so no custom crop UI is built here (see
+       handleReceiptSelected() in the script). margin-left:auto pushes the button to
+       the right edge of the Treibstoff row, as requested. */
+    .btn-receipt {
+      position: relative;
+      margin-left: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #6b6b6b;
+      color: #fff;
+      padding: 3px 10px;
+      font-size: 10px;
+      font-weight: 700;
+      font-family: inherit;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-receipt:hover { opacity: .85; }
+    .btn-receipt input[type="file"] {
+      position: absolute;
+      width: 1px; height: 1px;
+      padding: 0; margin: -1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+      border: 0;
+    }
+    .receipt-row {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 0 2px;
+    }
+    .receipt-thumb {
+      width: 34px;
+      height: 34px;
+      object-fit: cover;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+    .receipt-filename { font-size: 10.5px; color: #555; flex: 1; }
+    .btn-receipt-remove {
+      background: none;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      color: #999;
+      font-size: 11px;
+      line-height: 1;
+      padding: 3px 7px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-receipt-remove:hover { color: #c8151b; border-color: #c8151b; }
+
     /* ---------------------------------------------------- RADIO / CHECKBOX ---------------------------------------------------- */
     .radio-group, .check-group { display: flex; align-items: center; gap: 12px; }
     .radio-group label, .check-group label {
@@ -548,12 +609,33 @@
       </div>
     </div>
 
-    <div class="field-row">
+    <div class="field-row" style="border-bottom: none;">
       <div class="field-label">Treibstoff</div>
       <div class="field-control">
         <input type="number" id="treibstoff" min="0" step="1" placeholder="0">
-        <span class="inline-label">Liter Diesel gebunkert (Quittung ablegen)</span>
+        <span class="inline-label">Liter Diesel gebunkert</span>
+        <label class="btn-receipt">
+          Quittung hinzufügen
+          <input type="file" accept="image/*" id="receipt-input">
+        </label>
       </div>
+    </div>
+    <!-- Second Treibstoff line, for Bleifrei (Benzin) alongside Diesel above - a separate
+         input/line on screen, but merged onto one comma-separated PDF line (see the
+         fieldRow('Treibstoff', ...) call in the PDF generation section). No id list changes
+         needed elsewhere: serializeForm()/fillForm()/resetForm() already pick this input up
+         generically, same as every other plain number input in the form. -->
+    <div class="field-row" style="border-bottom: none;">
+      <div class="field-label"></div>
+      <div class="field-control">
+        <input type="number" id="treibstoff-bleifrei" min="0" step="1" placeholder="0">
+        <span class="inline-label">Liter Bleifrei gebunkert</span>
+      </div>
+    </div>
+    <div class="receipt-row" id="receipt-row">
+      <img class="receipt-thumb" id="receipt-thumb" alt="Tankquittung Vorschau">
+      <span class="receipt-filename" id="receipt-filename">Tankquittung.jpg</span>
+      <button type="button" class="btn-receipt-remove" onclick="clearReceipt()" title="Tankquittung entfernen">✕</button>
     </div>
 
   </div>
@@ -1044,6 +1126,83 @@
   wireCheck('mot-nok', 'mot-detail');
   wireCheck('schr-nok', 'schr-detail');
 
+  /* ---------------------------------------------------- TANKQUITTUNG (Beleg-Foto) ---------------------------------------------------- */
+  // The "Tankquittung" <input type="file"> deliberately has accept="image/*" and NO
+  // capture attribute - that's what lets iOS/iPadOS Safari's picker offer "Scan
+  // Documents" next to "Take Photo"/"Photo Library". Scan Documents does its own
+  // edge detection, perspective correction and cropping, so this form doesn't need
+  // (and doesn't build) any custom crop UI - whatever comes back from the picker is
+  // just downscaled/recompressed client-side and kept as an in-memory Blob.
+  //
+  // Nothing here is ever written to a server-side folder: submitForm() attaches
+  // this Blob to the same multipart POST as the PDF, and send-report.php reads it
+  // straight from PHP's own (auto-cleaned-up) upload temp file into the outgoing
+  // email - identical to how the PDF itself already works. If "PDF herunterladen"
+  // is used instead of "Absenden" (no email involved), the photo is simply not
+  // part of that local PDF download.
+  let receiptBlob = null;
+  const RECEIPT_FILENAME = 'Tankquittung.jpg';
+  const RECEIPT_MAX_DIMENSION = 1600;
+  const RECEIPT_JPEG_QUALITY = 0.75;
+
+  function downscaleReceiptImage(file) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const scale = Math.min(1, RECEIPT_MAX_DIMENSION / Math.max(img.naturalWidth, img.naturalHeight));
+        const width = Math.max(1, Math.round(img.naturalWidth * scale));
+        const height = Math.max(1, Math.round(img.naturalHeight * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        canvas.toBlob(blob => {
+          if (blob) resolve(blob); else reject(new Error('Bild konnte nicht verarbeitet werden.'));
+        }, 'image/jpeg', RECEIPT_JPEG_QUALITY);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Bild konnte nicht geladen werden.')); };
+      img.src = url;
+    });
+  }
+
+  function updateReceiptPreview() {
+    const row = document.getElementById('receipt-row');
+    const thumb = document.getElementById('receipt-thumb');
+    if (thumb.src) URL.revokeObjectURL(thumb.src);
+    if (!receiptBlob) {
+      thumb.removeAttribute('src');
+      row.style.display = 'none';
+      return;
+    }
+    thumb.src = URL.createObjectURL(receiptBlob);
+    row.style.display = 'flex';
+  }
+
+  function clearReceipt() {
+    receiptBlob = null;
+    updateReceiptPreview();
+  }
+
+  async function handleReceiptSelected(input) {
+    const file = input.files && input.files[0];
+    input.value = ''; // allow choosing the same file again later (e.g. after removing it)
+    if (!file) return;
+    try {
+      receiptBlob = await downscaleReceiptImage(file);
+      updateReceiptPreview();
+    } catch (err) {
+      console.error(err);
+      alert('Tankquittung konnte nicht verarbeitet werden:\n\n' + ((err && err.message) || err));
+      clearReceipt();
+    }
+  }
+
+  document.getElementById('receipt-input').addEventListener('change', function() {
+    handleReceiptSelected(this);
+  });
+
   /* ---------------------------------------------------- DIVERSES: AUTO-EXPANDING TEXTAREA ---------------------------------------------------- */
   // Grows the box to fit what's typed instead of scrolling inside a fixed-height
   // field. Webpage-only convenience - has no effect on the PDF, which already
@@ -1072,6 +1231,7 @@
       });
       document.querySelectorAll('.defekt-input').forEach(el => el.classList.remove('visible'));
       document.getElementById('diverses').style.height = '';
+      if (typeof clearReceipt === 'function') clearReceipt();
       // Collapse every day's crew dropdowns back to their initial `_a`/`_b`-only
       // state instead of leaving `_c`/`_d` (or any `_extra_N` created on the fly
       // while filling out the form) revealed-but-blank after a reset.
@@ -1448,7 +1608,7 @@
     fieldRow('Motoren', engineText('mot-bb', 'mot-stb', 'mot-nok', 'mot-detail'));
     fieldRow('Schrauben', engineText('schr-bb', 'schr-stb', 'schr-nok', 'schr-detail'));
     fieldRow('Motorenstunden', `${val('mot-h-bb') || '0'} h Bb   /   ${val('mot-h-stb') || '0'} h Stb (eingerückt)`);
-    fieldRow('Treibstoff', `${val('treibstoff') || '0'} Liter Diesel gebunkert`);
+    fieldRow('Treibstoff', `${val('treibstoff') || '0'} Liter Diesel, ${val('treibstoff-bleifrei') || '0'} Liter Bleifrei gebunkert`);
     y += 0.5;
     hr(false);
 
@@ -1610,7 +1770,8 @@
       const subject = `Pikettrapport${datum1 ? ' ' + datum1 : ''}`;
       const bodyText =
         'Hallo\n\n' +
-        'Im Anhang der ausgefüllte Pikettrapport.\n\n' +
+        'Im Anhang der ausgefüllte Pikettrapport' +
+        (receiptBlob ? ' sowie die Tankquittung.\n\n' : '.\n\n') +
         `Protokollführer/-in: ${sig}`;
 
       // Link, der das Formular mit allen aktuell eingegebenen Werten wieder
@@ -1628,6 +1789,9 @@
       formData.append('body', bodyText);
       formData.append('filename', filename);
       formData.append('editUrl', editUrl);
+      if (receiptBlob) {
+        formData.append('receipt', receiptBlob, RECEIPT_FILENAME);
+      }
 
       const response = await fetch('send-report.php', {
         method: 'POST',
