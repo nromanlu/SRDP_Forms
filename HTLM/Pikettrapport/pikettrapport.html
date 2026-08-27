@@ -78,13 +78,23 @@
 
     /* ---------------------------------------------------- DATE ROWS ---------------------------------------------------- */
     .date-block { margin-bottom: 10px; }
+    /* Patrouille 2 / Patrouille 3 start hidden - most Pikettrapporte only cover one day, so an
+       empty second/third day block shouldn't show (or print) by default. Revealed
+       via the "Patrouille hinzufügen" button (see addDay() in the script) or automatically
+       when a "Rapport bearbeiten" edit link restores data for that day. */
+    .date-block.day-hidden { display: none; }
     .date-row {
       display: flex;
       align-items: center;
       gap: 8px;
       margin-bottom: 4px;
     }
-    .date-row label { font-weight: 700; min-width: 88px; }
+    /* Fixed (not min-) width, shared with .mannschaft-row label below, so the date
+       input and the first crew-dropdown column start at the same x regardless of
+       which label's text is longer - "Datum Patrouille N:" is the longer of the
+       two, so that's what sizes it (plus a small buffer); flex-shrink:0 keeps it
+       from getting compressed if space is ever tight. */
+    .date-row label { font-weight: 700; width: 104px; flex-shrink: 0; }
     .date-row input[type="text"] { width: 130px; }
     .date-times { display: flex; align-items: center; gap: 8px; }
     .date-row .time-group { display: flex; align-items: center; gap: 4px; }
@@ -95,7 +105,7 @@
       gap: 8px;
       margin-bottom: 2px;
     }
-    .mannschaft-row label { min-width: 88px; color: #444; padding-top: 4px; }
+    .mannschaft-row label { width: 104px; flex-shrink: 0; color: #444; padding-top: 4px; }
     .crew-controls {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -104,7 +114,7 @@
     }
     .crew-controls select,
     .crew-controls input { width: 100%; }
-    /* Progressive reveal (Tag 1 and Tag 2 Mannschaft grids both use this): dropdowns
+    /* Progressive reveal (every day's Mannschaft grid, Patrouille 1-3, uses this): dropdowns
        beyond the first two start hidden (see updateCrewVisibility() in the script
        below) and only appear once every dropdown before them is filled; once every
        pre-declared dropdown is full, more get created on the fly, so Mannschaft
@@ -245,6 +255,11 @@
     .btn-download { background: #6b6b6b; color: #fff; }
     .btn-download:hover { opacity: .85; }
     .btn:disabled { opacity: .6; cursor: default; }
+    /* Same neutral gray as btn-download - this button doesn't submit/reset anything,
+       it just reveals the next hidden day block (see addDay() in the script).
+       Hidden once all 3 days are visible (updateAddDayButton()). */
+    .btn-add-day { background: #6b6b6b; color: #fff; margin-bottom: 10px; }
+    .btn-add-day:hover { opacity: .85; }
     .footer-buttons { display: flex; align-items: center; gap: 12px; }
     .sig-row { display: flex; align-items: center; gap: 8px; flex: 1; }
     .sig-row label { white-space: nowrap; font-size: 10.5px; color: #444; }
@@ -268,13 +283,13 @@
          squeezing onto the same row. The alignment spacers only made sense when
          everything shared one line, so they're dropped here. */
       .date-row { flex-wrap: wrap; }
-      .date-times { flex-basis: 100%; margin-top: 4px; margin-left: 96px; }
+      .date-times { flex-basis: 100%; margin-top: 4px; margin-left: 112px; }
       .date-spacer { display: none; }
 
       /* Mannschaft: label on its own line, crew dropdowns get the full row width below it
          instead of being squeezed next to the label. */
       .mannschaft-row { flex-direction: column; align-items: stretch; gap: 4px; }
-      .mannschaft-row label { min-width: 0; padding-top: 0; }
+      .mannschaft-row label { width: auto; flex-shrink: 1; padding-top: 0; }
 
       /* Crew dropdowns: 2 columns, auto-flowing rows (see the default .crew-controls
          rules above) - manual-entry field still forces its own full-width line. */
@@ -360,10 +375,10 @@
 
   <hr>
 
-  <!-- TAG 1 -->
-  <div class="date-block">
+  <!-- PATROUILLE 1 (always visible - every Pikettrapport covers at least one day) -->
+  <div class="date-block" id="day-block-1">
     <div class="date-row">
-      <label>Datum Tag 1:</label>
+      <label>Datum Patrouille 1:</label>
       <input type="text" id="datum1" placeholder="TT.MM.JJJJ" style="width:90px">
       <div class="date-times">
         <div class="date-spacer" style="width:90px"></div>
@@ -392,10 +407,12 @@
     </div>
   </div>
 
-  <!-- TAG 2 -->
-  <div class="date-block">
+  <!-- PATROUILLE 2 (starts hidden - see .day-hidden / addDay() in the script; revealed via
+       the "Patrouille hinzufügen" button below, or automatically when an edit link restores
+       data for it) -->
+  <div class="date-block day-hidden" id="day-block-2">
     <div class="date-row">
-      <label>Datum Tag 2:</label>
+      <label>Datum Patrouille 2:</label>
       <input type="text" id="datum2" placeholder="TT.MM.JJJJ" style="width:90px">
       <div class="date-times">
         <div class="date-spacer" style="width:90px"></div>
@@ -423,6 +440,40 @@
       </div>
     </div>
   </div>
+
+  <!-- PATROUILLE 3 (starts hidden, same as Patrouille 2 - max 3 days total per Pikettrapport) -->
+  <div class="date-block day-hidden" id="day-block-3">
+    <div class="date-row">
+      <label>Datum Patrouille 3:</label>
+      <input type="text" id="datum3" placeholder="TT.MM.JJJJ" style="width:90px">
+      <div class="date-times">
+        <div class="date-spacer" style="width:90px"></div>
+        <div class="time-group"><span>Von:</span> <input type="text" id="von3" style="width:55px" placeholder="hh:mm"></div>
+        <div class="date-spacer" style="width:15px"></div>
+        <div class="time-group"><span>Bis:</span> <input type="text" id="bis3" style="width:55px" placeholder="hh:mm"></div>
+      </div>
+    </div>
+    <div class="mannschaft-row">
+      <label>Mannschaft:</label>
+      <div class="crew-controls">
+        <select id="d3_crew_a" class="crew-select">
+          <option value="">Crew hinzufügen</option>
+        </select>
+        <select id="d3_crew_b" class="crew-select">
+          <option value="">Crew hinzufügen</option>
+        </select>
+        <select id="d3_crew_c" class="crew-select crew-hidden">
+          <option value="">Crew hinzufügen</option>
+        </select>
+        <select id="d3_crew_d" class="crew-select crew-hidden">
+          <option value="">Crew hinzufügen</option>
+        </select>
+        <input type="text" id="d3_crew_e" class="crew-manual" placeholder="Crew hinzufügen">
+      </div>
+    </div>
+  </div>
+
+  <button type="button" class="btn btn-add-day" id="addDayBtn" onclick="addDay()">+ Patrouille hinzufügen</button>
 
   <hr>
 
@@ -688,14 +739,17 @@
   // day's Mannschaft dropdowns instead, see updateSigCrewOptions() below.
   const CREW_SELECT_IDS = [
     'd1_crew_a', 'd1_crew_b', 'd1_crew_c', 'd1_crew_d',
-    'd2_crew_a', 'd2_crew_b', 'd2_crew_c', 'd2_crew_d'
+    'd2_crew_a', 'd2_crew_b', 'd2_crew_c', 'd2_crew_d',
+    'd3_crew_a', 'd3_crew_b', 'd3_crew_c', 'd3_crew_d'
   ];
 
   /* ---------------------------------------------------- CREW PROGRESSIVE REVEAL ---------------------------------------------------- */
-  // Same mechanism as einsatzrapport.html's Mannschaft section, but there are two
-  // independent Mannschaft grids here (Tag 1 / Tag 2), so everything below is
-  // parametrized by "prefix" - 'd1_crew' or 'd2_crew', matching the existing
-  // `${prefix}_a`/`${prefix}_extra_N` id convention already used by crewList().
+  // Same mechanism as einsatzrapport.html's Mannschaft section, but there are up to
+  // three independent Mannschaft grids here (Patrouille 1-3, see the "Patrouille hinzufügen"
+  // section further down for how/when Patrouille 2 and Patrouille 3 become visible at all), so
+  // everything below is parametrized by "prefix" - 'd1_crew'/'d2_crew'/'d3_crew',
+  // matching the existing `${prefix}_a`/`${prefix}_extra_N` id convention already
+  // used by crewList().
   // Each day starts with just its `_a`/`_b` dropdowns (+ the always-visible manual
   // `_e` field) visible; `_c`/`_d` carry the .crew-hidden class in the HTML and stay
   // display:none until needed, revealed one at a time as every dropdown shown so far
@@ -826,14 +880,75 @@
     updateCrewVisibility(prefix);
   }
 
-  const CREW_PREFIXES = ['d1_crew', 'd2_crew'];
-  // Re-fit both days' manual entries if the viewport crosses the 600px breakpoint
-  // (column count changes from 3 to 2 or back) - e.g. an iPad rotating, or a
-  // desktop browser window being resized.
+  const CREW_PREFIXES = ['d1_crew', 'd2_crew', 'd3_crew'];
+  // Re-fit every visible day's manual entry if the viewport crosses the 600px
+  // breakpoint (column count changes from 3 to 2 or back) - e.g. an iPad rotating,
+  // or a desktop browser window being resized.
   window.addEventListener('resize', () => CREW_PREFIXES.forEach(updateCrewManualSpan));
 
-  // Every name currently selected in either day's Mannschaft dropdowns (`_a`-`_d`
-  // plus any `_extra_N`) - across both Tag 1 and Tag 2, in DOM order, de-duplicated.
+  /* ---------------------------------------------------- TAG HINZUFÜGEN (bis zu 3 Tage) ---------------------------------------------------- */
+  // Most Pikettrapporte only cover a single day, so Patrouille 2 and Patrouille 3 (see the
+  // .date-block#day-block-2/-3 markup above) start hidden via .day-hidden instead
+  // of showing two empty day blocks by default. "Patrouille hinzufügen" reveals the next
+  // one, up to MAX_DAYS total; the button itself disappears once all three are
+  // visible. Visibility lives entirely on the .day-hidden class (no separate JS
+  // counter to keep in sync) so the DOM is always the single source of truth -
+  // used both by the button and by the PDF generator (see isDayVisible() there).
+  const MAX_DAYS = 3;
+
+  function dayBlockEl(day) {
+    return document.getElementById('day-block-' + day);
+  }
+
+  function isDayVisible(day) {
+    const block = dayBlockEl(day);
+    return !!block && !block.classList.contains('day-hidden');
+  }
+
+  function nextHiddenDay() {
+    for (let day = 2; day <= MAX_DAYS; day++) {
+      if (!isDayVisible(day)) return day;
+    }
+    return null;
+  }
+
+  function updateAddDayButton() {
+    const btn = document.getElementById('addDayBtn');
+    if (!btn) return;
+    btn.style.display = nextHiddenDay() === null ? 'none' : '';
+  }
+
+  function revealDay(day) {
+    const block = dayBlockEl(day);
+    if (block) block.classList.remove('day-hidden');
+    updateAddDayButton();
+  }
+
+  function addDay() {
+    const day = nextHiddenDay();
+    if (day !== null) revealDay(day);
+  }
+
+  // Reveals whichever of Patrouille 2 / Patrouille 3 a restored "Rapport bearbeiten" edit link
+  // actually has data for - a saved report can cover 1-3 days, and without this
+  // fillForm() would silently populate an invisible datum2/datum3 or
+  // d2_crew_*/d3_crew_* field instead of showing it.
+  function ensureDayVisibilityForRestoredData(data) {
+    const fields = (data && data.fields) || {};
+    const trimmed = id => (fields[id] || '').trim();
+    const dayHasData = day => {
+      const prefix = 'd' + day + '_crew_';
+      if (trimmed('datum' + day) || trimmed('von' + day) || trimmed('bis' + day)) return true;
+      return Object.keys(fields).some(id => id.startsWith(prefix) && trimmed(id));
+    };
+    for (let day = 2; day <= MAX_DAYS; day++) {
+      if (dayHasData(day)) revealDay(day);
+    }
+  }
+
+  // Every name currently selected in any day's Mannschaft dropdowns (`_a`-`_d`
+  // plus any `_extra_N`) - across all (visible or not) days, in DOM order,
+  // de-duplicated.
   // Deliberately excludes each day's manual entry: Protokollführer/-in must be
   // picked from a stored crew name, not a freehand-typed one (see
   // updateSigCrewOptions() below).
@@ -946,7 +1061,7 @@
       });
       document.querySelectorAll('.defekt-input').forEach(el => el.classList.remove('visible'));
       document.getElementById('diverses').style.height = '';
-      // Collapse both days' crew dropdowns back to their initial `_a`/`_b`-only
+      // Collapse every day's crew dropdowns back to their initial `_a`/`_b`-only
       // state instead of leaving `_c`/`_d` (or any `_extra_N` created on the fly
       // while filling out the form) revealed-but-blank after a reset.
       if (typeof CREW_PREFIXES !== 'undefined') {
@@ -959,6 +1074,15 @@
           if (typeof updateCrewManualSpan === 'function') updateCrewManualSpan(prefix);
         });
         if (typeof updateSigCrewOptions === 'function') updateSigCrewOptions();
+      }
+      // Collapse Patrouille 2 / Patrouille 3 back to hidden and bring the "Patrouille hinzufügen"
+      // button back, same as the initial single-day state.
+      if (typeof MAX_DAYS !== 'undefined') {
+        for (let day = 2; day <= MAX_DAYS; day++) {
+          const block = document.getElementById('day-block-' + day);
+          if (block) block.classList.add('day-hidden');
+        }
+        if (typeof updateAddDayButton === 'function') updateAddDayButton();
       }
     }
   }
@@ -1066,6 +1190,13 @@
     // restore their values.
     if (typeof ensureCrewDropdownsForRestoredData === 'function' && typeof CREW_PREFIXES !== 'undefined') {
       CREW_PREFIXES.forEach(prefix => ensureCrewDropdownsForRestoredData(data, prefix));
+    }
+    // Reveal Patrouille 2 / Patrouille 3 if this saved report actually has data for them - a
+    // hidden day-block doesn't stop fillForm() from setting its fields' values,
+    // but the day would stay invisible (and, worse, be silently left out of the
+    // PDF - see isDayVisible() below) without this.
+    if (typeof ensureDayVisibilityForRestoredData === 'function') {
+      ensureDayVisibilityForRestoredData(data);
     }
     fillForm(data);
   }
@@ -1250,7 +1381,7 @@
 
     y += 25;
 
-    // ---- Tag 1 / Tag 2 ----
+    // ---- Patrouille 1 / Patrouille 2 / Patrouille 3 ----
     function dateBlock(label, datumId, vonId, bisId, crewPrefix) {
       ensureSpace(14);
       pdf.setFont('LiberationSans', 'bold');
@@ -1286,8 +1417,16 @@
       y += crewLines.length * 4.2 + 1;
     }
 
-    dateBlock('Datum Tag 1:', 'datum1', 'von1', 'bis1', 'd1_crew');
-    dateBlock('Datum Tag 2:', 'datum2', 'von2', 'bis2', 'd2_crew');
+    // Patrouille 1 is always printed; Patrouille 2 / Patrouille 3 only if that day block is actually
+    // visible (see isDayVisible() / .day-hidden above) - a single-day Pikettrapport
+    // shouldn't print an empty "Datum Patrouille 2: -" line.
+    dateBlock('Datum Patrouille 1:', 'datum1', 'von1', 'bis1', 'd1_crew');
+    if (typeof isDayVisible !== 'function' || isDayVisible(2)) {
+      dateBlock('Datum Patrouille 2:', 'datum2', 'von2', 'bis2', 'd2_crew');
+    }
+    if (typeof isDayVisible === 'function' && isDayVisible(3)) {
+      dateBlock('Datum Patrouille 3:', 'datum3', 'von3', 'bis3', 'd3_crew');
+    }
     hr(true);
 
     // ---- Boot (Biene III) ----
@@ -1554,6 +1693,10 @@
     dateFormat: "d.m.Y",
     locale: "de"
   });
+  flatpickr("#datum3", {
+    dateFormat: "d.m.Y",
+    locale: "de"
+  });
   flatpickr("#von1", {
     enableTime: true,
     noCalendar: true,
@@ -1576,6 +1719,20 @@
     locale: "de"
   });
   flatpickr("#bis2", {
+    enableTime: true,
+    noCalendar: true,
+    dateFormat: "H:i",
+    time_24hr: true,
+    locale: "de"
+  });
+  flatpickr("#von3", {
+    enableTime: true,
+    noCalendar: true,
+    dateFormat: "H:i",
+    time_24hr: true,
+    locale: "de"
+  });
+  flatpickr("#bis3", {
     enableTime: true,
     noCalendar: true,
     dateFormat: "H:i",
