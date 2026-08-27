@@ -629,13 +629,23 @@
   <div class="section-title">Elektronik</div>
   <div class="grid">
     <div class="field-row">
-      <div class="field-label">Funkgeräte u.a. mobile Geräte</div>
+      <div class="field-label">Funkgeräte</div>
       <div class="field-control">
         <div class="radio-group">
           <label><input type="radio" name="funk" value="ok"> Alles i.O.</label>
           <label><input type="radio" name="funk" value="def"> Defekt:</label>
         </div>
         <input type="text" id="funk-detail" class="defekt-input" placeholder="Beschreibung" style="flex:auto">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field-label">Mobile Geräte u.a. iPad</div>
+      <div class="field-control">
+        <div class="radio-group">
+          <label><input type="radio" name="mobil" value="ok"> Alles i.O.</label>
+          <label><input type="radio" name="mobil" value="def"> Defekt:</label>
+        </div>
+        <input type="text" id="mobil-detail" class="defekt-input" placeholder="Beschreibung" style="flex:auto">
       </div>
     </div>
     <div class="field-row">
@@ -1029,6 +1039,7 @@
   wireRadio('schaeden-a', 'schaeden-a-detail');
   wireRadio('schaeden-i', 'schaeden-i-detail');
   wireRadio('funk', 'funk-detail');
+  wireRadio('mobil', 'mobil-detail');
   wireRadio('navi', 'navi-detail');
   wireCheck('mot-nok', 'mot-detail');
   wireCheck('schr-nok', 'schr-detail');
@@ -1518,7 +1529,8 @@
 
     // ---- Elektronik ----
     sectionTitle('Elektronik');
-    fieldRow('Funkgeräte u.a. mobile Geräte', okNokText('funk', 'funk-detail'));
+    fieldRow('Funkgeräte', okNokText('funk', 'funk-detail'));
+    fieldRow('Mobile Geräte u.a. iPad', okNokText('mobil', 'mobil-detail'));
     fieldRow('Navigationsgeräte', okNokText('navi', 'navi-detail'));
     y += 0.5;
     hr(false);
