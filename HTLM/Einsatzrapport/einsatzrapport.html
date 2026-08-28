@@ -2442,17 +2442,25 @@
 
     // ---- Einsatzbericht ----
     sectionTitle('Einsatzbericht');
+    // Plain text now, not a boxed field (removed per explicit follow-up request -
+    // this used to be the one section in the whole PDF drawn as a bordered,
+    // padded box; every other section is just text flush at marginX right under
+    // its sectionTitle()/hr(), so this now genuinely matches that instead of
+    // just having its frame erased). Uses the exact same
+    // "ensureSpace(lines.length * lineH + 2)" / "text at marginX, y" /
+    // "y += lines.length * lineH + 1" pattern fieldRow() and the Mannschaft
+    // crew-list text above already use - no more artificial minimum height
+    // (the old berichtBoxH's Math.max(20, ...) floor), no more inset text
+    // offset (the old "+3"/"+6" padding that made sense only inside a box).
+    // A short report now takes up only as many lines as it actually needs,
+    // like every other multi-line field in this document.
     pdf.setFont('LiberationSans', 'normal');
     pdf.setFontSize(9);
-    const berichtLines = pdf.splitTextToSize(val('einsatzbericht') || '-', contentW - 6);
-    const berichtBoxH = Math.max(20, berichtLines.length * lineH + 6 + 4);
-    ensureSpace(berichtBoxH + 8);
-    pdf.setDrawColor(...lightGray);
-    pdf.setLineWidth(0.3);
-    pdf.rect(marginX, y, contentW, berichtBoxH, 'D');
+    const berichtLines = pdf.splitTextToSize(val('einsatzbericht') || '-', contentW);
+    ensureSpace(berichtLines.length * lineH + 2);
     pdf.setTextColor(...ink);
-    pdf.text(berichtLines, marginX + 3, y + 6);
-    y += berichtBoxH + 5;
+    pdf.text(berichtLines, marginX, y);
+    y += berichtLines.length * lineH + 1;
 
     // ---- Boot ----
     hr(false);

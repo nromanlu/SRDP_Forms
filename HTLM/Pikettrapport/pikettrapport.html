@@ -744,8 +744,11 @@
 
   <hr class="thin">
 
-  <!-- DIVERSES -->
-  <div class="section-title">Diverses</div>
+  <!-- DIVERSES (on-screen section title renamed to "Pikettbericht" per explicit
+       follow-up request, matching the PDF - the id "diverses" and class
+       ".diverses-area" are deliberately left as-is, same as the "Patrouille"/
+       "Tag" rename elsewhere in this file: only what a person reads changed) -->
+  <div class="section-title">Pikettbericht</div>
   <textarea id="diverses" class="diverses-area" placeholder="Weitere Bemerkungen…"></textarea>
 
   <!-- FOOTER -->
@@ -1678,13 +1681,16 @@
 
     // Patrouille 1 is always printed; Patrouille 2 / Patrouille 3 only if that day block is actually
     // visible (see isDayVisible() / .day-hidden above) - a single-day Pikettrapport
-    // shouldn't print an empty "Datum Patrouille 2: -" line.
-    dateBlock('Datum Patrouille 1:', 'datum1', 'von1', 'bis1', 'd1_crew');
+    // shouldn't print an empty "Patrouille 2: -" line.
+    // Labels here read "Patrouille N:" (no "Datum" prefix) per explicit follow-up
+    // request - the on-screen labels still say "Datum Patrouille N:" (unchanged),
+    // only the PDF text was shortened.
+    dateBlock('Patrouille 1:', 'datum1', 'von1', 'bis1', 'd1_crew');
     if (typeof isDayVisible !== 'function' || isDayVisible(2)) {
-      dateBlock('Datum Patrouille 2:', 'datum2', 'von2', 'bis2', 'd2_crew');
+      dateBlock('Patrouille 2:', 'datum2', 'von2', 'bis2', 'd2_crew');
     }
     if (typeof isDayVisible === 'function' && isDayVisible(3)) {
-      dateBlock('Datum Patrouille 3:', 'datum3', 'von3', 'bis3', 'd3_crew');
+      dateBlock('Patrouille 3:', 'datum3', 'von3', 'bis3', 'd3_crew');
     }
     hr(true);
 
@@ -1783,19 +1789,24 @@
     y += 0.5;
     hr(false);
 
-    // ---- Diverses ----
-    sectionTitle('Diverses');
+    // ---- Pikettbericht (renamed from "Diverses" per explicit follow-up request -
+    // the field/textarea id "diverses", CSS class ".diverses-area", and JS names
+    // (autoResizeDiverses() etc.) are all deliberately left as-is, same convention
+    // as the "Patrouille"/"Tag" rename elsewhere in this file: only the
+    // user-visible label changed, not internal identifiers) ----
+    // Plain flowing text, not a boxed field (same treatment as Einsatzrapport's
+    // Einsatzbericht section, applied here per explicit follow-up request): no
+    // more pdf.rect() frame, no more forced minimum box height, no more inset
+    // text offset - just sectionTitle() + text flush at marginX, exactly like
+    // fieldRow() and the Mannschaft crew-list text elsewhere in this PDF.
+    sectionTitle('Pikettbericht');
     pdf.setFont('LiberationSans', 'normal');
     pdf.setFontSize(9);
-    const diversesLines = pdf.splitTextToSize(val('diverses') || '-', contentW - 6);
-    const boxH = Math.max(20, diversesLines.length * 4.3 + 6);
-    ensureSpace(boxH + 8);
-    pdf.setDrawColor(...lightGray);
-    pdf.setLineWidth(0.3);
-    pdf.rect(marginX, y, contentW, boxH, 'D');
+    const diversesLines = pdf.splitTextToSize(val('diverses') || '-', contentW);
+    ensureSpace(diversesLines.length * 4.2 + 2);
     pdf.setTextColor(...ink);
-    pdf.text(diversesLines, marginX + 3, y + 6);
-    y += boxH + 5;
+    pdf.text(diversesLines, marginX, y);
+    y += diversesLines.length * 4.2 + 1;
 
     // ---- Footer / signature ----
     ensureSpace(16);
