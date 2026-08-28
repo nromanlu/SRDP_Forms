@@ -2150,10 +2150,18 @@
       if (!hasSignature) {
         if (rightLabel) {
           ensureSpace(lineH);
-          pdf.setFont('LiberationSans', 'normal');
           pdf.setFontSize(9);
           pdf.setTextColor(...ink);
-          pdf.text(`${rightLabel}: ${rightValue || '-'}`, pageW - marginX, y, { align: 'right' });
+          // Name (rightValue) printed bold, label stays normal weight - see the
+          // bold-value block below for why this needs two separate right-aligned
+          // pdf.text() calls instead of one (jsPDF can't mix weights in one call).
+          const rightXNS = pageW - marginX;
+          pdf.setFont('LiberationSans', 'bold');
+          const valueTextNS = rightValue || '-';
+          const valueWidthNS = pdf.getTextWidth(valueTextNS);
+          pdf.text(valueTextNS, rightXNS, y, { align: 'right' });
+          pdf.setFont('LiberationSans', 'normal');
+          pdf.text(`${rightLabel}: `, rightXNS - valueWidthNS, y, { align: 'right' });
           y += lineH + 1;
         }
         return;
@@ -2182,10 +2190,19 @@
         }
       });
       if (rightLabel) {
-        pdf.setFont('LiberationSans', 'normal');
         pdf.setFontSize(9);
         pdf.setTextColor(...ink);
-        pdf.text(`${rightLabel}: ${rightValue || '-'}`, pageW - marginX, boxTopY + boxH, { align: 'right' });
+        // Name (rightValue) printed bold, label stays normal weight - jsPDF has
+        // no mixed-weight text run, so the value is measured and drawn
+        // right-aligned first, then the label is drawn right-aligned ending
+        // exactly where the value begins.
+        const rightX = pageW - marginX;
+        pdf.setFont('LiberationSans', 'bold');
+        const valueText = rightValue || '-';
+        const valueWidth = pdf.getTextWidth(valueText);
+        pdf.text(valueText, rightX, boxTopY + boxH, { align: 'right' });
+        pdf.setFont('LiberationSans', 'normal');
+        pdf.text(`${rightLabel}: `, rightX - valueWidth, boxTopY + boxH, { align: 'right' });
       }
       y = boxTopY + boxH + 4;
     }
