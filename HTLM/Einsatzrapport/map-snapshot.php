@@ -34,7 +34,7 @@ const GEOAPIFY_API_KEY = '5d0494d021a84a36b381c240d7b37466';
 // reads back the resulting image's real pixel size to keep the aspect
 // ratio correct in the PDF, so these can be changed freely.
 // ---------------------------------------------------------------------
-const MAP_WIDTH  = 640;
+const MAP_WIDTH  = 840;
 const MAP_HEIGHT = 420;
 const MAP_ZOOM   = 12;
 // "osm-carto" is Geoapify's raster style based on the same OSM Carto
