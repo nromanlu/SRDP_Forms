@@ -258,6 +258,23 @@
     .gps-relativ-input { flex: 1; max-width: 160px; }
     /* Same idea for the Anzahl Personen row: input+label always wrap together. */
     .count-pair { display: inline-flex; align-items: center; gap: 4px; }
+    /* Live range check (see updateGpsValidation() in the GPS MAP SNAPSHOT script
+       section): once a deg+min pair is fully typed, its two inputs' bottom border
+       turns green if the resulting coordinate falls inside the operational area,
+       red if it doesn't. Both the plain and :focus states are overridden (via the
+       extra class-selector specificity below, no !important needed) so the color
+       stays visible while the field is still focused/being edited, not just after
+       blur - the whole point is live feedback as the value is typed. A still-
+       incomplete pair (only one of deg/min filled, or neither) gets neither class
+       and keeps the normal gray/blue look, since there's nothing to check yet. */
+    .gps-deg.gps-valid, .gps-min.gps-valid,
+    .gps-deg.gps-valid:focus, .gps-min.gps-valid:focus {
+      border-bottom-color: #2e7d32;
+    }
+    .gps-deg.gps-invalid, .gps-min.gps-invalid,
+    .gps-deg.gps-invalid:focus, .gps-min.gps-invalid:focus {
+      border-bottom-color: #c62828;
+    }
 
     /* ---------------------------------------------------- BOOTSFUEHRER / BOOTSEIGNER ---------------------------------------------------- */
     .owner-grid {
@@ -1653,6 +1670,7 @@
       document.querySelectorAll('.defekt-input, .inline-detail').forEach(el => el.classList.remove('visible'));
       if (typeof clearSignaturePad === 'function') clearSignaturePad();
       updateBillingTotal();
+      if (typeof updateGpsValidation === 'function') updateGpsValidation();
     }
   }
 
@@ -1762,6 +1780,7 @@
     if (typeof updateEinsatzdauer === 'function') updateEinsatzdauer();
     if (typeof updateVorgefundenBootDetail === 'function') updateVorgefundenBootDetail();
     if (typeof updateBootTypDetail === 'function') updateBootTypDetail();
+    if (typeof updateGpsValidation === 'function') updateGpsValidation();
 
     if (Array.isArray(data.fuehrerSignatur)) {
       fuehrerSignaturStrokes = data.fuehrerSignatur;
@@ -1849,6 +1868,48 @@
     if (![nDeg, nMin, oDeg, oMin].every(Number.isFinite)) return null;
     return { lat: nDeg + nMin / 60, lon: oDeg + oMin / 60 };
   }
+
+  /* ---------------------------------------------------- GPS RANGE CHECK (live green/red border) ---------------------------------------------------- */
+  // The Einsatzgebiet is bounded by a fixed rectangle; live-validates the GPS
+  // position as it's typed and colors each axis's deg+min pair accordingly. The
+  // bounds were given as degrees/minutes/seconds - converted once, here, to
+  // decimal degrees (matching gpsDecimalCoords()'s deg + min/60 convention above),
+  // since the fields themselves stay in the existing deg + decimal-minutes entry
+  // format - no change to how the fields are filled in.
+  function dmsToDecimal(deg, min, sec) { return deg + min / 60 + sec / 3600; }
+  const GPS_LAT_MIN = dmsToDecimal(47, 10, 49.3);  // 47°10'49.3"N
+  const GPS_LAT_MAX = dmsToDecimal(47, 24, 8.0);   // 47°24'08.0"N
+  const GPS_LON_MIN = dmsToDecimal(8, 31, 32.4);   // 8°31'32.4"E
+  const GPS_LON_MAX = dmsToDecimal(8, 58, 13.8);   // 8°58'13.8"E
+
+  // Decimal value for one axis (N or O) only - unlike gpsDecimalCoords() above,
+  // this doesn't require the *other* axis to also be filled in, so e.g. typing
+  // just the N pair first already gets checked/colored on its own.
+  function gpsAxisDecimal(degId, minId) {
+    const deg = parseFloat(val(degId));
+    const min = parseFloat(val(minId));
+    if (!Number.isFinite(deg) || !Number.isFinite(min)) return null;
+    return deg + min / 60;
+  }
+
+  function setGpsAxisValidity(degId, minId, decimalValue, min, max) {
+    const degEl = document.getElementById(degId);
+    const minEl = document.getElementById(minId);
+    if (!degEl || !minEl) return;
+    [degEl, minEl].forEach(el => el.classList.remove('gps-valid', 'gps-invalid'));
+    if (decimalValue === null) return; // pair still incomplete - nothing to check yet, leave neutral
+    const inRange = decimalValue >= min && decimalValue <= max;
+    [degEl, minEl].forEach(el => el.classList.add(inRange ? 'gps-valid' : 'gps-invalid'));
+  }
+
+  function updateGpsValidation() {
+    setGpsAxisValidity('gps-n-deg', 'gps-n-min', gpsAxisDecimal('gps-n-deg', 'gps-n-min'), GPS_LAT_MIN, GPS_LAT_MAX);
+    setGpsAxisValidity('gps-o-deg', 'gps-o-min', gpsAxisDecimal('gps-o-deg', 'gps-o-min'), GPS_LON_MIN, GPS_LON_MAX);
+  }
+  ['gps-n-deg', 'gps-n-min', 'gps-o-deg', 'gps-o-min'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', updateGpsValidation);
+  });
 
   // Fetches a small OpenStreetMap snapshot centered on the reported position
   // from map-snapshot.php (a server-side proxy - see that file for why the
