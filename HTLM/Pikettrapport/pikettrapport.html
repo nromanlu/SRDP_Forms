@@ -76,6 +76,31 @@
       color: #1a1a1a;
     }
 
+    /* Foldable section (used for Boot 2 / FW-Weidlig, which most Pikettrapporte
+       don't touch): native <details>/<summary> so it's collapsed by default with
+       no extra JS. The summary reuses .section-title's look, plus its own
+       disclosure arrow (::before) instead of the default marker triangle, which
+       renders inconsistently across browsers/os on iPad. */
+    details.foldable-section { margin-bottom: 0; }
+    details.foldable-section > summary.section-title {
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      user-select: none;
+    }
+    details.foldable-section > summary.section-title::-webkit-details-marker { display: none; }
+    details.foldable-section > summary.section-title::before {
+      content: '▸';
+      font-size: 9px;
+      color: #555;
+      transition: transform 0.15s ease;
+    }
+    details.foldable-section[open] > summary.section-title::before {
+      transform: rotate(90deg);
+    }
+
     /* ---------------------------------------------------- DATE ROWS ---------------------------------------------------- */
     .date-block { margin-bottom: 10px; }
     /* Patrouille 2 / Patrouille 3 start hidden - most Pikettrapporte only cover one day, so an
@@ -91,9 +116,9 @@
     }
     /* Fixed (not min-) width, shared with .mannschaft-row label below, so the date
        input and the first crew-dropdown column start at the same x regardless of
-       which label's text is longer - "Datum Patrouille N:" is the longer of the
-       two, so that's what sizes it (plus a small buffer); flex-shrink:0 keeps it
-       from getting compressed if space is ever tight. */
+       which label's text is longer - "Patrouille N:" and "Mannschaft:" both fit
+       comfortably within it (plus a small buffer); flex-shrink:0 keeps it from
+       getting compressed if space is ever tight. */
     .date-row label { font-weight: 700; width: 104px; flex-shrink: 0; }
     .date-row input[type="text"] { width: 130px; }
     .date-times { display: flex; align-items: center; gap: 8px; }
@@ -153,6 +178,17 @@
 
     input:focus, textarea:focus { border-bottom-color: #1a4fa0; background: #eef3fb; }
     input[type="number"] { width: 64px; text-align: right; }
+
+    /* Required-field indicator (Patrouille 1's Datum/Von/Bis + first crew dropdown/
+       manual entry - see updateRequiredFieldStyles() in the script): red while
+       empty, green once filled. Uses !important only to win over input:focus's
+       own border-bottom-color above, not to fight anything else. No separate
+       "neutral/gray" class exists - removing both classes just falls back to the
+       normal #aaa border-bottom already set on all inputs/selects above, which is
+       exactly the gray the first crew dropdown reverts to once the manual entry
+       is used instead. */
+    input.req-invalid, select.req-invalid { border-bottom-color: #c8151b !important; }
+    input.req-valid, select.req-valid { border-bottom-color: #2e7d32 !important; }
 
     /* ---------------------------------------------------- TABLE GRID ---------------------------------------------------- */
     .grid { display: grid; gap: 4px 0; }
@@ -439,7 +475,7 @@
   <!-- PATROUILLE 1 (always visible - every Pikettrapport covers at least one day) -->
   <div class="date-block" id="day-block-1">
     <div class="date-row">
-      <label>Datum Patrouille 1:</label>
+      <label>Patrouille 1:</label>
       <input type="text" id="datum1" placeholder="TT.MM.JJJJ" style="width:90px">
       <div class="date-times">
         <div class="date-spacer" style="width:90px"></div>
@@ -473,7 +509,7 @@
        data for it) -->
   <div class="date-block day-hidden" id="day-block-2">
     <div class="date-row">
-      <label>Datum Patrouille 2:</label>
+      <label>Patrouille 2:</label>
       <input type="text" id="datum2" placeholder="TT.MM.JJJJ" style="width:90px">
       <div class="date-times">
         <div class="date-spacer" style="width:90px"></div>
@@ -505,7 +541,7 @@
   <!-- PATROUILLE 3 (starts hidden, same as Patrouille 2 - max 3 days total per Pikettrapport) -->
   <div class="date-block day-hidden" id="day-block-3">
     <div class="date-row">
-      <label>Datum Patrouille 3:</label>
+      <label>Patrouille 3:</label>
       <input type="text" id="datum3" placeholder="TT.MM.JJJJ" style="width:90px">
       <div class="date-times">
         <div class="date-spacer" style="width:90px"></div>
@@ -538,8 +574,8 @@
 
   <hr>
 
-  <!-- BOOT -->
-  <div class="section-title">Boot (Biene III)</div>
+  <!-- BOOT 1 (Biene III) -->
+  <div class="section-title">Biene III</div>
   <div class="grid">
 
     <div class="field-row">
@@ -639,6 +675,93 @@
     </div>
 
   </div>
+
+  <hr class="thin">
+
+  <!-- BOOT 2 (FW-Weidlig) - simpler than Biene III: single Alles i.O./Nicht i.O.
+       radios for Motoren/Schrauben (no Bb/Stb split), Motorenstunden as
+       ausgerückt/eingerückt (not Bb/Stb), and Treibstoff is Bleifrei-only
+       (no Diesel line, no Tankquittung capture). Wrapped in <details> so it's
+       collapsed by default - most Pikettrapporte only involve Biene III. -->
+  <details class="foldable-section">
+  <summary class="section-title">FW-Weidlig</summary>
+  <div class="grid">
+
+    <div class="field-row">
+      <div class="field-label">Allgemeiner Zustand</div>
+      <div class="field-control">
+        <div class="radio-group">
+          <label><input type="radio" name="w-allg" value="ok"> Alles i.O.</label>
+          <label><input type="radio" name="w-allg" value="nok"> Nicht i.O.:</label>
+        </div>
+        <input type="text" id="w-allg-detail" class="defekt-input" placeholder="Beschreibung" style="flex:auto">
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field-label">Schäden aussen</div>
+      <div class="field-control">
+        <div class="radio-group">
+          <label><input type="radio" name="w-schaeden-a" value="ok"> Alles i.O.</label>
+          <label><input type="radio" name="w-schaeden-a" value="nok"> Nicht i.O.:</label>
+        </div>
+        <input type="text" id="w-schaeden-a-detail" class="defekt-input" placeholder="Beschreibung" style="flex:auto">
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field-label">Schäden innen</div>
+      <div class="field-control">
+        <div class="radio-group">
+          <label><input type="radio" name="w-schaeden-i" value="ok"> Alles i.O.</label>
+          <label><input type="radio" name="w-schaeden-i" value="nok"> Nicht i.O.:</label>
+        </div>
+        <input type="text" id="w-schaeden-i-detail" class="defekt-input" placeholder="Beschreibung" style="flex:auto">
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field-label">Motoren</div>
+      <div class="field-control">
+        <div class="radio-group">
+          <label><input type="radio" name="w-mot" value="ok"> Alles i.O.</label>
+          <label><input type="radio" name="w-mot" value="nok"> Nicht i.O.:</label>
+        </div>
+        <input type="text" id="w-mot-detail" class="defekt-input" placeholder="Beschreibung" style="flex:auto">
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field-label">Schrauben</div>
+      <div class="field-control">
+        <div class="radio-group">
+          <label><input type="radio" name="w-schr" value="ok"> Alles i.O.</label>
+          <label><input type="radio" name="w-schr" value="nok"> Nicht i.O.:</label>
+        </div>
+        <input type="text" id="w-schr-detail" class="defekt-input" placeholder="Beschreibung" style="flex:auto">
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field-label">Motorenstunden</div>
+      <div class="field-control">
+        <input type="number" id="w-mot-h-ausg" min="0" step="0.1" placeholder="0">
+        <span class="inline-label">h ausgerückt</span>
+        <input type="number" id="w-mot-h-eing" min="0" step="0.1" placeholder="0">
+        <span class="inline-label">h eingerückt</span>
+      </div>
+    </div>
+
+    <div class="field-row" style="border-bottom: none;">
+      <div class="field-label">Treibstoff</div>
+      <div class="field-control">
+        <input type="number" id="w-treibstoff-bleifrei" min="0" step="1" placeholder="0">
+        <span class="inline-label">Liter Bleifrei gebunkert</span>
+      </div>
+    </div>
+
+  </div>
+  </details>
 
   <hr class="thin">
 
@@ -1175,6 +1298,10 @@
     // <select>-Optionen laufen, sonst gibt es die Crew-Namen als Option noch
     // nicht und der Wert kann nicht gesetzt werden.
     applyEditLinkIfPresent();
+    // Set the initial red/green borders once, whether or not an edit link
+    // actually restored anything - a fresh, empty form should already show the
+    // required fields as red, not just after the first keystroke.
+    if (typeof updateRequiredFieldStyles === 'function') updateRequiredFieldStyles();
   })();
 
    /* ---------------------------------------------------- Biene III ---------------------------------------------------- */
@@ -1332,6 +1459,10 @@
         }
         if (typeof updateAddDayButton === 'function') updateAddDayButton();
       }
+      // Re-collapse the FW-Weidlig <details> section back to its default folded state.
+      document.querySelectorAll('details.foldable-section').forEach(d => d.open = false);
+      // Required fields are all empty again after a reset - back to red.
+      if (typeof updateRequiredFieldStyles === 'function') updateRequiredFieldStyles();
     }
   }
 
@@ -1421,6 +1552,15 @@
         if (typeof updateSelectPlaceholderState === 'function') updateSelectPlaceholderState(sigCrewEl);
       }
     }
+    // FW-Weidlig's <details> section is collapsed by default - if a restored
+    // edit link actually has any "w-" (FW-Weidlig) data in it, open it back up
+    // so the restored values aren't hidden from view.
+    const hasWeidligData =
+      Object.keys(data.fields || {}).some(id => id.startsWith('w-') && data.fields[id]) ||
+      Object.keys(data.radios || {}).some(name => name.startsWith('w-') && data.radios[name]);
+    if (hasWeidligData) {
+      document.querySelectorAll('details.foldable-section').forEach(d => d.open = true);
+    }
   }
 
   function encodeFormData(data) {
@@ -1494,6 +1634,82 @@
       .filter(v => v)
       .join(', ');
   }
+
+  // Required fields, same enforcement style as Protokollführer/-in (sig_crew) below:
+  // no visual asterisks on the labels, just a blocking alert() before Absenden/PDF
+  // herunterladen. Only Patrouille 1's date/times/crew are mandatory - Patrouille 2
+  // and 3 stay optional, same as every other field on the form.
+  function getMissingRequiredFields() {
+    const missing = [];
+    if (!document.getElementById('datum1').value.trim()) missing.push('Datum (Patrouille 1)');
+    if (!document.getElementById('von1').value.trim()) missing.push('Von-Zeit (Patrouille 1)');
+    if (!document.getElementById('bis1').value.trim()) missing.push('Bis-Zeit (Patrouille 1)');
+    if (!crewList('d1_crew')) missing.push('mindestens 1 Mannschaftsmitglied (Patrouille 1)');
+    return missing;
+  }
+
+  // Live red/green border on the same required fields, driven by the same rules
+  // as getMissingRequiredFields() above (kept as two separate functions since one
+  // drives an alert() at submit time and the other drives live styling on every
+  // keystroke/selection - merging them would mean re-deriving pass/fail from a
+  // string list instead of just checking a value directly).
+  // The first crew dropdown (d1_crew_a) is the only crew field with red/invalid
+  // styling - d1_crew_b/c/d and Patrouille 2/3 are never required, so they never
+  // get styled here at all. If the manual entry (d1_crew_e) is filled instead of
+  // the dropdown, the dropdown reverts to its normal gray (neither class) and the
+  // manual entry itself turns green.
+  function setReqState(el, state) {
+    if (!el) return;
+    el.classList.remove('req-invalid', 'req-valid');
+    if (state === 'invalid') el.classList.add('req-invalid');
+    else if (state === 'valid') el.classList.add('req-valid');
+    // state === 'neutral' -> no class -> falls back to the normal gray border.
+  }
+
+  function updateRequiredFieldStyles() {
+    const datum1El = document.getElementById('datum1');
+    const von1El = document.getElementById('von1');
+    const bis1El = document.getElementById('bis1');
+    const crewAEl = document.getElementById('d1_crew_a');
+    const crewEEl = document.getElementById('d1_crew_e');
+
+    setReqState(datum1El, datum1El && datum1El.value.trim() ? 'valid' : 'invalid');
+    setReqState(von1El, von1El && von1El.value.trim() ? 'valid' : 'invalid');
+    setReqState(bis1El, bis1El && bis1El.value.trim() ? 'valid' : 'invalid');
+
+    const crewAFilled = !!(crewAEl && crewAEl.value.trim());
+    const crewEFilled = !!(crewEEl && crewEEl.value.trim());
+    if (crewAFilled) {
+      setReqState(crewAEl, 'valid');
+    } else if (crewEFilled) {
+      setReqState(crewAEl, 'neutral');
+    } else {
+      setReqState(crewAEl, 'invalid');
+    }
+    setReqState(crewEEl, crewEFilled ? 'valid' : 'neutral');
+  }
+
+  // Wired directly (rather than only through flatpickr's own onChange option,
+  // which would have to be set at flatpickr(...) init time - impossible here
+  // since updateRequiredFieldStyles() isn't defined yet when that runs earlier
+  // in the page - and wouldn't fire at all for the two plain crew fields, or for
+  // fillForm()'s programmatic setDate(v, false) restores) so the borders update
+  // on every relevant input, however the value got there. Pushing onto each
+  // instance's own onChange array (rather than only listening for native
+  // 'input'/'change' events, which flatpickr doesn't reliably dispatch on picker
+  // selection) is what actually catches a date/time picked via the UI.
+  ['datum1', 'von1', 'bis1'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('input', updateRequiredFieldStyles);
+    if (el._flatpickr && Array.isArray(el._flatpickr.config.onChange)) {
+      el._flatpickr.config.onChange.push(updateRequiredFieldStyles);
+    }
+  });
+  const d1CrewAEl = document.getElementById('d1_crew_a');
+  if (d1CrewAEl) d1CrewAEl.addEventListener('change', updateRequiredFieldStyles);
+  const d1CrewEEl = document.getElementById('d1_crew_e');
+  if (d1CrewEEl) d1CrewEEl.addEventListener('input', updateRequiredFieldStyles);
 
   function okNokText(name, detailId) {
     const v = radioValue(name);
@@ -1682,9 +1898,8 @@
     // Patrouille 1 is always printed; Patrouille 2 / Patrouille 3 only if that day block is actually
     // visible (see isDayVisible() / .day-hidden above) - a single-day Pikettrapport
     // shouldn't print an empty "Patrouille 2: -" line.
-    // Labels here read "Patrouille N:" (no "Datum" prefix) per explicit follow-up
-    // request - the on-screen labels still say "Datum Patrouille N:" (unchanged),
-    // only the PDF text was shortened.
+    // Labels here read "Patrouille N:" (no "Datum" prefix) - the on-screen
+    // labels were later shortened to match (see .date-row label markup above).
     dateBlock('Patrouille 1:', 'datum1', 'von1', 'bis1', 'd1_crew');
     if (typeof isDayVisible !== 'function' || isDayVisible(2)) {
       dateBlock('Patrouille 2:', 'datum2', 'von2', 'bis2', 'd2_crew');
@@ -1694,83 +1909,100 @@
     }
     hr(true);
 
-    // ---- Boot (Biene III) ----
-    sectionTitle('Boot (Biene III)');
-    fieldRow('Allgemeiner Zustand', okNokText('allg', 'allg-detail'));
-    fieldRow('Schäden aussen', okNokText('schaeden-a', 'schaeden-a-detail'));
-    fieldRow('Schäden innen', okNokText('schaeden-i', 'schaeden-i-detail'));
-    fieldRow('Motoren', engineText('mot-bb', 'mot-stb', 'mot-nok', 'mot-detail'));
-    fieldRow('Schrauben', engineText('schr-bb', 'schr-stb', 'schr-nok', 'schr-detail'));
-    fieldRow('Motorenstunden', `${val('mot-h-bb') || '0'} h Bb   /   ${val('mot-h-stb') || '0'} h Stb (eingerückt)`);
-    fieldRow('Treibstoff', `${val('treibstoff') || '0'} Liter Diesel, ${val('treibstoff-bleifrei') || '0'} Liter Bleifrei gebunkert`);
+    // ---- Boote (Biene III + FW-Weidlig) ----
+    // Plain-text two-column layout (no table/grid lines or fill) - matches the
+    // rest of the document's fieldRow() look, just with a second value column
+    // for FW-Weidlig alongside Biene III's. FW-Weidlig's Motoren/Schrauben use
+    // the simple okNokText() (single Alles i.O./Nicht i.O.), not Biene III's
+    // Bb/Stb engineText(); its Motorenstunden is ausgerückt/eingerückt, not Bb/Stb;
+    // its Treibstoff is Bleifrei-only (no Diesel line, no Tankquittung).
+    sectionTitle('Boote');
+
+    const boatValueColW = (contentW - 50) / 2;
+    const boatX1 = marginX + 50;
+    const boatX2 = boatX1 + boatValueColW;
+    const boatLineHeight = 4.2;
+
+    // Column headers ("Biene III" / "FW-Weidlig"), bold, above the field rows.
+    ensureSpace(5);
+    pdf.setFont('LiberationSans', 'bold');
+    pdf.setFontSize(9);
+    pdf.setTextColor(...ink);
+    pdf.text('Biene III', boatX1, y);
+    pdf.text('FW-Weidlig', boatX2, y);
+    y += 4.5;
+
+    function fieldRowBoat(label, value1, value2) {
+      pdf.setFont('LiberationSans', 'normal');
+      pdf.setFontSize(9);
+      const lines1 = pdf.splitTextToSize(value1, boatValueColW - 4);
+      const lines2 = pdf.splitTextToSize(value2, boatValueColW - 4);
+      const maxLines = Math.max(lines1.length, lines2.length);
+      ensureSpace(maxLines * boatLineHeight + 2);
+      pdf.setTextColor(51, 51, 51);
+      pdf.text(label, marginX, y);
+      pdf.setTextColor(...ink);
+      pdf.text(lines1, boatX1, y);
+      pdf.text(lines2, boatX2, y);
+      y += maxLines * boatLineHeight + 1;
+    }
+
+    fieldRowBoat('Allgemeiner Zustand', okNokText('allg', 'allg-detail'), okNokText('w-allg', 'w-allg-detail'));
+    fieldRowBoat('Schäden aussen', okNokText('schaeden-a', 'schaeden-a-detail'), okNokText('w-schaeden-a', 'w-schaeden-a-detail'));
+    fieldRowBoat('Schäden innen', okNokText('schaeden-i', 'schaeden-i-detail'), okNokText('w-schaeden-i', 'w-schaeden-i-detail'));
+    fieldRowBoat('Motoren', engineText('mot-bb', 'mot-stb', 'mot-nok', 'mot-detail'), okNokText('w-mot', 'w-mot-detail'));
+    fieldRowBoat('Schrauben', engineText('schr-bb', 'schr-stb', 'schr-nok', 'schr-detail'), okNokText('w-schr', 'w-schr-detail'));
+    fieldRowBoat('Motorenstunden', `${val('mot-h-bb') || '0'} h Bb   /   ${val('mot-h-stb') || '0'} h Stb (eingerückt)`, `${val('w-mot-h-ausg') || '0'}h ausgerückt / ${val('w-mot-h-eing') || '0'}h eingerückt`);
+    fieldRowBoat('Treibstoff', `${val('treibstoff') || '0'} Liter Diesel, ${val('treibstoff-bleifrei') || '0'} Liter Bleifrei gebunkert`, `${val('w-treibstoff-bleifrei') || '0'} Liter Bleifrei gebunkert`);
     y += 0.5;
     hr(false);
 
-    // ---- Maschinen table ----
+    // ---- Maschinen ----
+    // Same plain-text field-row style as the Boote section above (no
+    // table/grid lines or fill) instead of a bordered table, for visual
+    // consistency between the two sections.
     sectionTitle('Maschinen');
 
-    const colW = [40, (contentW - 40) / 3, (contentW - 40) / 3, (contentW - 40) / 3];
-    const headerLabels = ['', 'Löschpumpe (JOHSTADT)', 'Schmutzwasserpumpe (Honda)', 'Stromaggregat (Honda)'];
-    const rows = [
-      ['Allgemeiner Zustand', isChecked('m1-ok') ? 'i.O.' : '-', isChecked('m2-ok') ? 'i.O.' : '-', isChecked('m3-ok') ? 'i.O.' : '-'],
-      ['Betriebsdauer', `${val('m1-min') || '0'} min`, `${val('m2-min') || '0'} min`, `${val('m3-min') || '0'} min`],
-      ['Treibstoff', `${val('m1-l') || '0'} L`, `${val('m2-l') || '0'} L`, `${val('m3-l') || '0'} L`]
-    ];
+    const maschinenColW = (contentW - 50) / 3;
+    const maschinenX1 = marginX + 50;
+    const maschinenX2 = maschinenX1 + maschinenColW;
+    const maschinenX3 = maschinenX2 + maschinenColW;
+    const maschinenHeaders = ['Löschpumpe (JOHSTADT)', 'Schmutzwasserpumpe (Honda)', 'Stromaggregat (Honda)'];
+    const maschinenLineHeight = 4.2;
 
-    // Header text is wrapped to fit each column's actual width so long labels
-    // (e.g. "Schmutzwasserpumpe (Honda)") no longer clip or bleed into the
-    // next cell. Font size stays 9pt — only the wrapping/row height changed.
-    const headerPaddingX = 2;
-    const headerLineHeight = 3.4;
+    // Column headers, wrapped to fit (e.g. "Schmutzwasserpumpe (Honda)" doesn't
+    // fit on one line at this width).
     pdf.setFont('LiberationSans', 'bold');
     pdf.setFontSize(9);
-    const headerWrapped = headerLabels.map((label, i) => {
-      if (i === 0 || !label) return [];
-      return pdf.splitTextToSize(label, colW[i] - headerPaddingX * 2);
-    });
-    const headerMaxLines = Math.max(1, ...headerWrapped.map(lines => lines.length));
-    const headerRowH = headerMaxLines * headerLineHeight + 3.5;
-    const dataRowH = 6;
+    const maschinenHeaderWrapped = maschinenHeaders.map(label => pdf.splitTextToSize(label, maschinenColW - 4));
+    const maschinenHeaderMaxLines = Math.max(1, ...maschinenHeaderWrapped.map(lines => lines.length));
+    ensureSpace(maschinenHeaderMaxLines * maschinenLineHeight + 2);
+    pdf.setTextColor(...ink);
+    pdf.text(maschinenHeaderWrapped[0], maschinenX1, y);
+    pdf.text(maschinenHeaderWrapped[1], maschinenX2, y);
+    pdf.text(maschinenHeaderWrapped[2], maschinenX3, y);
+    y += maschinenHeaderMaxLines * maschinenLineHeight + 1;
 
-    ensureSpace(headerRowH + dataRowH * rows.length + 4);
-
-    let cx = marginX;
-    pdf.setDrawColor(...lightGray);
-    pdf.setLineWidth(0.25);
-    colW.forEach((w, i) => {
-      pdf.setFillColor(240, 240, 236);
-      pdf.rect(cx, y, w, headerRowH, 'FD');
-      if (i === 0) { cx += w; return; }
-      pdf.setFont('LiberationSans', 'bold');
+    function fieldRowMaschinen(label, v1, v2, v3) {
+      pdf.setFont('LiberationSans', 'normal');
       pdf.setFontSize(9);
+      const lines1 = pdf.splitTextToSize(v1, maschinenColW - 4);
+      const lines2 = pdf.splitTextToSize(v2, maschinenColW - 4);
+      const lines3 = pdf.splitTextToSize(v3, maschinenColW - 4);
+      const maxLines = Math.max(lines1.length, lines2.length, lines3.length);
+      ensureSpace(maxLines * maschinenLineHeight + 2);
+      pdf.setTextColor(51, 51, 51);
+      pdf.text(label, marginX, y);
       pdf.setTextColor(...ink);
-      const lines = headerWrapped[i];
-      const totalH = lines.length * headerLineHeight;
-      let ty = y + headerRowH / 2 - totalH / 2 + headerLineHeight * 0.8;
-      lines.forEach(line => {
-        pdf.text(line, cx + w / 2, ty, { align: 'center' });
-        ty += headerLineHeight;
-      });
-      cx += w;
-    });
-    y += headerRowH;
+      pdf.text(lines1, maschinenX1, y);
+      pdf.text(lines2, maschinenX2, y);
+      pdf.text(lines3, maschinenX3, y);
+      y += maxLines * maschinenLineHeight + 1;
+    }
 
-    rows.forEach(row => {
-      cx = marginX;
-      pdf.setDrawColor(...lightGray);
-      pdf.setLineWidth(0.25);
-      row.forEach((text, i) => {
-        pdf.rect(cx, y, colW[i], dataRowH, 'D');
-        pdf.setFont('LiberationSans', i === 0 ? 'bold' : 'normal');
-        pdf.setFontSize(9);
-        pdf.setTextColor(...ink);
-        const align = i === 0 ? 'left' : 'center';
-        const tx = i === 0 ? cx + 2 : cx + colW[i] / 2;
-        pdf.text(text, tx, y + dataRowH / 2, { align, baseline: 'middle' });
-        cx += colW[i];
-      });
-      y += dataRowH;
-    });
+    fieldRowMaschinen('Allgemeiner Zustand', isChecked('m1-ok') ? 'i.O.' : '-', isChecked('m2-ok') ? 'i.O.' : '-', isChecked('m3-ok') ? 'i.O.' : '-');
+    fieldRowMaschinen('Betriebsdauer', `${val('m1-min') || '0'} min`, `${val('m2-min') || '0'} min`, `${val('m3-min') || '0'} min`);
+    fieldRowMaschinen('Treibstoff', `${val('m1-l') || '0'} L`, `${val('m2-l') || '0'} L`, `${val('m3-l') || '0'} L`);
     y += 0.5;
     hr(false);
 
@@ -1852,6 +2084,11 @@
       alert('Bitte Protokollführer/-in auswählen.');
       return;
     }
+    const missingFields = getMissingRequiredFields();
+    if (missingFields.length) {
+      alert('Bitte folgende Pflichtfelder ausfüllen:\n\n- ' + missingFields.join('\n- '));
+      return;
+    }
 
     const submitBtn = document.getElementById('submitBtn');
     const resetBtn = document.querySelector('.btn-reset');
@@ -1929,6 +2166,11 @@
     const sig = document.getElementById('sig_crew').value.trim();
     if (!sig) {
       alert('Bitte Protokollführer/-in auswählen.');
+      return;
+    }
+    const missingFields = getMissingRequiredFields();
+    if (missingFields.length) {
+      alert('Bitte folgende Pflichtfelder ausfüllen:\n\n- ' + missingFields.join('\n- '));
       return;
     }
 
