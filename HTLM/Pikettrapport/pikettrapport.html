@@ -1706,10 +1706,12 @@
     const bis1El = document.getElementById('bis1');
     const crewAEl = document.getElementById('d1_crew_a');
     const crewEEl = document.getElementById('d1_crew_e');
+    const sigEl = document.getElementById('sig_crew');
 
     setReqState(datum1El, datum1El && datum1El.value.trim() ? 'valid' : 'invalid');
     setReqState(von1El, von1El && von1El.value.trim() ? 'valid' : 'invalid');
     setReqState(bis1El, bis1El && bis1El.value.trim() ? 'valid' : 'invalid');
+    setReqState(sigEl, sigEl && sigEl.value.trim() ? 'valid' : 'invalid');
 
     const crewAFilled = !!(crewAEl && crewAEl.value.trim());
     const crewEFilled = !!(crewEEl && crewEEl.value.trim());
@@ -1744,6 +1746,8 @@
   if (d1CrewAEl) d1CrewAEl.addEventListener('change', updateRequiredFieldStyles);
   const d1CrewEEl = document.getElementById('d1_crew_e');
   if (d1CrewEEl) d1CrewEEl.addEventListener('input', updateRequiredFieldStyles);
+  const sigCrewReqEl = document.getElementById('sig_crew');
+  if (sigCrewReqEl) sigCrewReqEl.addEventListener('change', updateRequiredFieldStyles);
 
   function okNokText(name, detailId) {
     const v = radioValue(name);
@@ -2004,18 +2008,30 @@
     const maschinenHeaders = ['Löschpumpe (JOHSTADT)', 'Schmutzwasserpumpe (Honda)', 'Stromaggregat (Honda)'];
     const maschinenLineHeight = 4.2;
 
-    // Column headers, wrapped to fit (e.g. "Schmutzwasserpumpe (Honda)" doesn't
-    // fit on one line at this width).
+    // Column headers - always kept to one line (auto-shrinking the font size
+    // just enough to fit, rather than wrapping) so "Schmutzwasserpumpe (Honda)"
+    // etc. never break across two lines and throw off row alignment with Boote
+    // above. Floors at maschinenHeaderMinFontSize so a future much longer
+    // machine name degrades gracefully instead of shrinking to nothing.
     pdf.setFont('LiberationSans', 'bold');
-    pdf.setFontSize(9);
-    const maschinenHeaderWrapped = maschinenHeaders.map(label => pdf.splitTextToSize(label, maschinenColW - 4));
-    const maschinenHeaderMaxLines = Math.max(1, ...maschinenHeaderWrapped.map(lines => lines.length));
-    ensureSpace(maschinenHeaderMaxLines * maschinenLineHeight + 2);
+    const maschinenHeaderMinFontSize = 6.5;
+    let maschinenHeaderFontSize = 9;
+    while (maschinenHeaderFontSize > maschinenHeaderMinFontSize) {
+      pdf.setFontSize(maschinenHeaderFontSize);
+      const widestHeader = Math.max(...maschinenHeaders.map(label =>
+        pdf.getStringUnitWidth(label) * maschinenHeaderFontSize / pdf.internal.scaleFactor
+      ));
+      if (widestHeader <= maschinenColW - 4) break;
+      maschinenHeaderFontSize -= 0.25;
+    }
+    pdf.setFontSize(maschinenHeaderFontSize);
+    const maschinenHeaderRowH = maschinenLineHeight + 2;
+    ensureSpace(maschinenHeaderRowH);
     pdf.setTextColor(...ink);
-    pdf.text(maschinenHeaderWrapped[0], maschinenX1, y);
-    pdf.text(maschinenHeaderWrapped[1], maschinenX2, y);
-    pdf.text(maschinenHeaderWrapped[2], maschinenX3, y);
-    y += maschinenHeaderMaxLines * maschinenLineHeight + 1;
+    pdf.text(maschinenHeaders[0], maschinenX1, y);
+    pdf.text(maschinenHeaders[1], maschinenX2, y);
+    pdf.text(maschinenHeaders[2], maschinenX3, y);
+    y += maschinenHeaderRowH;
 
     function fieldRowMaschinen(label, v1, v2, v3) {
       pdf.setFont('LiberationSans', 'normal');
