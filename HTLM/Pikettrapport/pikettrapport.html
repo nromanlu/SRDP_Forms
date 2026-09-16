@@ -671,7 +671,7 @@
     <div class="receipt-row" id="receipt-row">
       <img class="receipt-thumb" id="receipt-thumb" alt="Tankquittung Vorschau">
       <span class="receipt-filename" id="receipt-filename">Tankquittung.jpg</span>
-      <button type="button" class="btn-receipt-remove" onclick="clearReceipt()" title="Tankquittung entfernen">✕</button>
+      <button type="button" class="btn-receipt-remove" onclick="clearReceipt('biene')" title="Tankquittung entfernen">✕</button>
     </div>
 
   </div>
@@ -742,11 +742,22 @@
       </div>
     </div>
 
-    <div class="field-row">
+    <div class="field-row" style="border-bottom: none;">
       <div class="field-label">Motorenstunden</div>
       <div class="field-control">
         <input type="number" id="w-mot-h-ausg" min="0" step="0.1" placeholder="0">
         <span class="inline-label">h ausgerückt</span>
+      </div>
+    </div>
+    <!-- "h eingerückt" on its own line underneath "h ausgerückt" - empty field-label
+         so it still aligns under the Motorenstunden column, same pattern as Biene
+         III's second (Bleifrei) Treibstoff line below. Only the ausgerückt row has
+         its border-bottom removed, so there's no line between the two Motorenstunden
+         rows themselves, but the normal line still separates them as a group from
+         Treibstoff below. -->
+    <div class="field-row">
+      <div class="field-label"></div>
+      <div class="field-control">
         <input type="number" id="w-mot-h-eing" min="0" step="0.1" placeholder="0">
         <span class="inline-label">h eingerückt</span>
       </div>
@@ -757,7 +768,16 @@
       <div class="field-control">
         <input type="number" id="w-treibstoff-bleifrei" min="0" step="1" placeholder="0">
         <span class="inline-label">Liter Bleifrei gebunkert</span>
+        <label class="btn-receipt">
+          Quittung hinzufügen
+          <input type="file" accept="image/*" id="w-receipt-input">
+        </label>
       </div>
+    </div>
+    <div class="receipt-row" id="w-receipt-row">
+      <img class="receipt-thumb" id="w-receipt-thumb" alt="Tankquittung Vorschau">
+      <span class="receipt-filename" id="w-receipt-filename">Tankquittung.jpg</span>
+      <button type="button" class="btn-receipt-remove" onclick="clearReceipt('weidlig')" title="Tankquittung entfernen">✕</button>
     </div>
 
   </div>
@@ -1339,13 +1359,21 @@
   // just downscaled/recompressed client-side and kept as an in-memory Blob.
   //
   // Nothing here is ever written to a server-side folder: submitForm() attaches
-  // this Blob to the same multipart POST as the PDF, and send-report.php reads it
-  // straight from PHP's own (auto-cleaned-up) upload temp file into the outgoing
-  // email - identical to how the PDF itself already works. If "PDF herunterladen"
-  // is used instead of "Absenden" (no email involved), the photo is simply not
-  // part of that local PDF download.
-  let receiptBlob = null;
-  const RECEIPT_FILENAME = 'Tankquittung.jpg';
+  // these Blobs to the same multipart POST as the PDF, and send-report.php reads
+  // them straight out of PHP's own (auto-cleaned-up) upload temp files into the
+  // outgoing email - identical to how the PDF itself already works. If "PDF
+  // herunterladen" is used instead of "Absenden" (no email involved), the photos
+  // are simply not part of that local PDF download.
+  //
+  // Two independent receipts are supported - one per boat's fuel (Biene III's
+  // Diesel/Bleifrei Treibstoff row, FW-Weidlig's Bleifrei-only one) - since a
+  // callout can involve bunkering fuel for either or both boats, and each needs
+  // its own proof. Keyed by 'biene'/'weidlig' throughout; the DOM id prefix and
+  // outgoing filename differ per key (send-report.php reads them as separate
+  // fields "receipt_biene"/"receipt_weidlig").
+  const receiptBlobs = { biene: null, weidlig: null };
+  const RECEIPT_DOM_PREFIX = { biene: 'receipt', weidlig: 'w-receipt' };
+  const RECEIPT_FILENAMES = { biene: 'Tankquittung_Biene-III.jpg', weidlig: 'Tankquittung_FW-Weidlig.jpg' };
   const RECEIPT_MAX_DIMENSION = 1600;
   const RECEIPT_JPEG_QUALITY = 0.75;
 
@@ -1371,40 +1399,46 @@
     });
   }
 
-  function updateReceiptPreview() {
-    const row = document.getElementById('receipt-row');
-    const thumb = document.getElementById('receipt-thumb');
+  function updateReceiptPreview(key) {
+    const domPrefix = RECEIPT_DOM_PREFIX[key];
+    const row = document.getElementById(domPrefix + '-row');
+    const thumb = document.getElementById(domPrefix + '-thumb');
+    if (!row || !thumb) return;
     if (thumb.src) URL.revokeObjectURL(thumb.src);
-    if (!receiptBlob) {
+    const blob = receiptBlobs[key];
+    if (!blob) {
       thumb.removeAttribute('src');
       row.style.display = 'none';
       return;
     }
-    thumb.src = URL.createObjectURL(receiptBlob);
+    thumb.src = URL.createObjectURL(blob);
     row.style.display = 'flex';
   }
 
-  function clearReceipt() {
-    receiptBlob = null;
-    updateReceiptPreview();
+  function clearReceipt(key) {
+    receiptBlobs[key] = null;
+    updateReceiptPreview(key);
   }
 
-  async function handleReceiptSelected(input) {
+  async function handleReceiptSelected(key, input) {
     const file = input.files && input.files[0];
     input.value = ''; // allow choosing the same file again later (e.g. after removing it)
     if (!file) return;
     try {
-      receiptBlob = await downscaleReceiptImage(file);
-      updateReceiptPreview();
+      receiptBlobs[key] = await downscaleReceiptImage(file);
+      updateReceiptPreview(key);
     } catch (err) {
       console.error(err);
       alert('Tankquittung konnte nicht verarbeitet werden:\n\n' + ((err && err.message) || err));
-      clearReceipt();
+      clearReceipt(key);
     }
   }
 
   document.getElementById('receipt-input').addEventListener('change', function() {
-    handleReceiptSelected(this);
+    handleReceiptSelected('biene', this);
+  });
+  document.getElementById('w-receipt-input').addEventListener('change', function() {
+    handleReceiptSelected('weidlig', this);
   });
 
   /* ---------------------------------------------------- DIVERSES: AUTO-EXPANDING TEXTAREA ---------------------------------------------------- */
@@ -1435,7 +1469,7 @@
       });
       document.querySelectorAll('.defekt-input').forEach(el => el.classList.remove('visible'));
       document.getElementById('diverses').style.height = '';
-      if (typeof clearReceipt === 'function') clearReceipt();
+      if (typeof clearReceipt === 'function') { clearReceipt('biene'); clearReceipt('weidlig'); }
       // Collapse every day's crew dropdowns back to their initial `_a`/`_b`-only
       // state instead of leaving `_c`/`_d` (or any `_extra_N` created on the fly
       // while filling out the form) revealed-but-blank after a reset.
@@ -2104,10 +2138,11 @@
       const filename = buildFilename();
       const datum1 = document.getElementById('datum1').value.trim();
       const subject = `Pikettrapport${datum1 ? ' ' + datum1 : ''}`;
+      const attachedReceiptKeys = ['biene', 'weidlig'].filter(k => receiptBlobs[k]);
       const bodyText =
         'Hallo\n\n' +
         'Im Anhang der ausgefüllte Pikettrapport' +
-        (receiptBlob ? ' sowie die Tankquittung.\n\n' : '.\n\n') +
+        (attachedReceiptKeys.length ? ` sowie die Tankquittung${attachedReceiptKeys.length > 1 ? 'en' : ''}.\n\n` : '.\n\n') +
         `Protokollführer/-in: ${sig}`;
 
       // Link, der das Formular mit allen aktuell eingegebenen Werten wieder
@@ -2125,9 +2160,9 @@
       formData.append('body', bodyText);
       formData.append('filename', filename);
       formData.append('editUrl', editUrl);
-      if (receiptBlob) {
-        formData.append('receipt', receiptBlob, RECEIPT_FILENAME);
-      }
+      attachedReceiptKeys.forEach(k => {
+        formData.append('receipt_' + k, receiptBlobs[k], RECEIPT_FILENAMES[k]);
+      });
 
       const response = await fetch('send-report.php', {
         method: 'POST',
