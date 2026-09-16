@@ -276,6 +276,21 @@
       border-bottom-color: #c62828;
     }
 
+    /* Required-field indicator (Datum, Einsatzalarm/-beginn/-ende, and
+       Protokollführer/-in - see updateRequiredFieldStyles() in the script):
+       same red/green idea and same colors as the GPS live-check above, red
+       while empty, green once filled. Same technique too - explicit :focus
+       overrides instead of !important, so the color stays visible while the
+       field is still focused. */
+    input.req-invalid, select.req-invalid,
+    input.req-invalid:focus, select.req-invalid:focus {
+      border-bottom-color: #c62828;
+    }
+    input.req-valid, select.req-valid,
+    input.req-valid:focus, select.req-valid:focus {
+      border-bottom-color: #2e7d32;
+    }
+
     /* ---------------------------------------------------- BOOTSFUEHRER / BOOTSEIGNER ---------------------------------------------------- */
     .owner-grid {
       display: grid;
@@ -1232,6 +1247,10 @@
     // <select>-Optionen laufen, sonst gibt es die Crew-Namen als Option noch
     // nicht und der Wert kann nicht gesetzt werden.
     applyEditLinkIfPresent();
+    // Set the initial red/green borders once, whether or not an edit link
+    // actually restored anything - a fresh, empty form should already show the
+    // required fields as red, not just after the first keystroke.
+    if (typeof updateRequiredFieldStyles === 'function') updateRequiredFieldStyles();
   })();
 
   /* ---- PIN confirmation flow for the "Bearbeitet von" select ---- */
@@ -1671,6 +1690,7 @@
       if (typeof clearSignaturePad === 'function') clearSignaturePad();
       updateBillingTotal();
       if (typeof updateGpsValidation === 'function') updateGpsValidation();
+      if (typeof updateRequiredFieldStyles === 'function') updateRequiredFieldStyles();
     }
   }
 
@@ -1781,6 +1801,7 @@
     if (typeof updateVorgefundenBootDetail === 'function') updateVorgefundenBootDetail();
     if (typeof updateBootTypDetail === 'function') updateBootTypDetail();
     if (typeof updateGpsValidation === 'function') updateGpsValidation();
+    if (typeof updateRequiredFieldStyles === 'function') updateRequiredFieldStyles();
 
     if (Array.isArray(data.fuehrerSignatur)) {
       fuehrerSignaturStrokes = data.fuehrerSignatur;
@@ -1910,6 +1931,56 @@
     const el = document.getElementById(id);
     if (el) el.addEventListener('input', updateGpsValidation);
   });
+
+  /* ---------------------------------------------------- REQUIRED FIELDS (Datum, Zeiten, Protokollführer/-in) ---------------------------------------------------- */
+  // Datum, Einsatzalarm/-beginn/-ende, and Protokollführer/-in (sig_crew) are
+  // mandatory - same red/green live-styling idea as the GPS check above (and
+  // ported from Pikettrapport's identical feature), plus the same
+  // alert()-on-submit gate sig_crew already had below. Einsatzdauer is left out
+  // on purpose - it's a read-only field derived from Einsatzbeginn/Einsatzende,
+  // not something the user fills in themselves.
+  function getMissingRequiredFields() {
+    const missing = [];
+    if (!document.getElementById('datum').value.trim()) missing.push('Datum');
+    if (!document.getElementById('einsatzalarm').value.trim()) missing.push('Einsatzalarm');
+    if (!document.getElementById('einsatzbeginn').value.trim()) missing.push('Einsatzbeginn');
+    if (!document.getElementById('einsatzende').value.trim()) missing.push('Einsatzende');
+    return missing;
+  }
+
+  function setReqState(el, state) {
+    if (!el) return;
+    el.classList.remove('req-invalid', 'req-valid');
+    if (state === 'invalid') el.classList.add('req-invalid');
+    else if (state === 'valid') el.classList.add('req-valid');
+  }
+
+  function updateRequiredFieldStyles() {
+    ['datum', 'einsatzalarm', 'einsatzbeginn', 'einsatzende', 'sig_crew'].forEach(id => {
+      const el = document.getElementById(id);
+      setReqState(el, el && el.value.trim() ? 'valid' : 'invalid');
+    });
+  }
+
+  // Wired directly (rather than only through flatpickr's own onChange option,
+  // which would have to be set at flatpickr(...) init time - impossible here
+  // since updateRequiredFieldStyles() isn't defined yet when that runs earlier
+  // in the page - and wouldn't fire at all for fillForm()'s programmatic
+  // setDate(v, false) restores) so the borders update on every relevant input,
+  // however the value got there. Pushing onto each instance's own onChange
+  // array (rather than only listening for native 'input'/'change' events,
+  // which flatpickr doesn't reliably dispatch on picker selection) is what
+  // actually catches a date/time picked via the UI.
+  ['datum', 'einsatzalarm', 'einsatzbeginn', 'einsatzende'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('input', updateRequiredFieldStyles);
+    if (el._flatpickr && Array.isArray(el._flatpickr.config.onChange)) {
+      el._flatpickr.config.onChange.push(updateRequiredFieldStyles);
+    }
+  });
+  const sigCrewReqEl = document.getElementById('sig_crew');
+  if (sigCrewReqEl) sigCrewReqEl.addEventListener('change', updateRequiredFieldStyles);
 
   // Fetches a small OpenStreetMap snapshot centered on the reported position
   // from map-snapshot.php (a server-side proxy - see that file for why the
@@ -2600,6 +2671,11 @@
       alert('Bitte Protokollführer/-in auswählen.');
       return;
     }
+    const missingFields = getMissingRequiredFields();
+    if (missingFields.length) {
+      alert('Bitte folgende Pflichtfelder ausfüllen:\n\n- ' + missingFields.join('\n- '));
+      return;
+    }
 
     const submitBtn = document.getElementById('submitBtn');
     const resetBtn = document.querySelector('.btn-reset');
@@ -2673,6 +2749,11 @@
     const sig = document.getElementById('sig_crew').value.trim();
     if (!sig) {
       alert('Bitte Protokollführer/-in auswählen.');
+      return;
+    }
+    const missingFields = getMissingRequiredFields();
+    if (missingFields.length) {
+      alert('Bitte folgende Pflichtfelder ausfüllen:\n\n- ' + missingFields.join('\n- '));
       return;
     }
 
