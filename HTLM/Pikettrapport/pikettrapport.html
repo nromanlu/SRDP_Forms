@@ -1672,12 +1672,32 @@
   // no visual asterisks on the labels, just a blocking alert() before Absenden/PDF
   // herunterladen. Only Patrouille 1's date/times/crew are mandatory - Patrouille 2
   // and 3 stay optional, same as every other field on the form.
+  //
+  // Motorenstunden becomes mandatory for a boat as soon as ANY of that boat's
+  // status radio-button groups has been touched (i.e. the crew started filling
+  // in that boat's section at all) - these are exactly the radio-group names
+  // wired with wireRadio() above for Biene III, plus their w- counterparts for
+  // FW-Weidlig (whose Motoren/Schrauben are radios too, unlike Biene III's
+  // checkboxes, so they count here as well).
+  const BIENE_STATUS_RADIOS = ['allg', 'schaeden-a', 'schaeden-i'];
+  const WEIDLIG_STATUS_RADIOS = ['w-allg', 'w-schaeden-a', 'w-schaeden-i', 'w-mot', 'w-schr'];
+
   function getMissingRequiredFields() {
     const missing = [];
     if (!document.getElementById('datum1').value.trim()) missing.push('Datum (Patrouille 1)');
     if (!document.getElementById('von1').value.trim()) missing.push('Von-Zeit (Patrouille 1)');
     if (!document.getElementById('bis1').value.trim()) missing.push('Bis-Zeit (Patrouille 1)');
     if (!crewList('d1_crew')) missing.push('mindestens 1 Mannschaftsmitglied (Patrouille 1)');
+
+    if (BIENE_STATUS_RADIOS.some(name => radioValue(name) !== null)) {
+      if (!val('mot-h-bb')) missing.push('Motorenstunden Bb (Biene III)');
+      if (!val('mot-h-stb')) missing.push('Motorenstunden Stb (Biene III)');
+    }
+    if (WEIDLIG_STATUS_RADIOS.some(name => radioValue(name) !== null)) {
+      if (!val('w-mot-h-ausg')) missing.push('Motorenstunden ausgerückt (FW-Weidlig)');
+      if (!val('w-mot-h-eing')) missing.push('Motorenstunden eingerückt (FW-Weidlig)');
+    }
+
     return missing;
   }
 
@@ -1722,6 +1742,22 @@
       setReqState(crewAEl, 'invalid');
     }
     setReqState(crewEEl, crewEFilled ? 'valid' : 'neutral');
+
+    // Motorenstunden: red/green only kicks in once the corresponding boat's
+    // status section has been touched; before that the fields stay neutral
+    // gray, same as d1_crew_b/c/d never being styled at all.
+    const motHBbEl = document.getElementById('mot-h-bb');
+    const motHStbEl = document.getElementById('mot-h-stb');
+    const wMotHAusgEl = document.getElementById('w-mot-h-ausg');
+    const wMotHEingEl = document.getElementById('w-mot-h-eing');
+
+    const bieneStatusActive = BIENE_STATUS_RADIOS.some(name => radioValue(name) !== null);
+    setReqState(motHBbEl, bieneStatusActive ? (val('mot-h-bb') ? 'valid' : 'invalid') : 'neutral');
+    setReqState(motHStbEl, bieneStatusActive ? (val('mot-h-stb') ? 'valid' : 'invalid') : 'neutral');
+
+    const weidligStatusActive = WEIDLIG_STATUS_RADIOS.some(name => radioValue(name) !== null);
+    setReqState(wMotHAusgEl, weidligStatusActive ? (val('w-mot-h-ausg') ? 'valid' : 'invalid') : 'neutral');
+    setReqState(wMotHEingEl, weidligStatusActive ? (val('w-mot-h-eing') ? 'valid' : 'invalid') : 'neutral');
   }
 
   // Wired directly (rather than only through flatpickr's own onChange option,
@@ -1747,6 +1783,19 @@
   if (d1CrewEEl) d1CrewEEl.addEventListener('input', updateRequiredFieldStyles);
   const sigCrewReqEl = document.getElementById('sig_crew');
   if (sigCrewReqEl) sigCrewReqEl.addEventListener('change', updateRequiredFieldStyles);
+
+  // Motorenstunden required-field wiring: a status radio for either boat
+  // flips its Motorenstunden field(s) between neutral/red/green, and typing
+  // into a Motorenstunden field itself re-evaluates its own red/green state.
+  BIENE_STATUS_RADIOS.concat(WEIDLIG_STATUS_RADIOS).forEach(name => {
+    document.querySelectorAll(`input[name="${name}"]`).forEach(r => {
+      r.addEventListener('change', updateRequiredFieldStyles);
+    });
+  });
+  ['mot-h-bb', 'mot-h-stb', 'w-mot-h-ausg', 'w-mot-h-eing'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', updateRequiredFieldStyles);
+  });
 
   function okNokText(name, detailId) {
     const v = radioValue(name);
