@@ -1349,19 +1349,34 @@
   })();
 
    /* ---------------------------------------------------- Biene III ---------------------------------------------------- */
-  // Show text field when "Nicht i.O." / "Defekt" is selected
+  // Show text field when "Nicht i.O." / "Defekt" is selected - and, once shown,
+  // the description becomes mandatory too (see NOK_DETAIL_FIELDS / getMissingRequiredFields()
+  // / updateRequiredFieldStyles() further down): red until filled, green once it
+  // is, same red/green scheme as everywhere else on the form. Reverting the
+  // radio/checkbox back to "i.O." hides the field again and drops the
+  // requirement with it.
   function wireRadio(name, detailId) {
     document.querySelectorAll(`input[name="${name}"]`).forEach(r => {
       r.addEventListener('change', () => {
         const el = document.getElementById(detailId);
         const show = (r.value === 'nok' || r.value === 'def') && r.checked;
         el.classList.toggle('visible', show);
+        if (typeof updateRequiredFieldStyles === 'function') updateRequiredFieldStyles();
       });
+    });
+    const detailEl = document.getElementById(detailId);
+    if (detailEl) detailEl.addEventListener('input', () => {
+      if (typeof updateRequiredFieldStyles === 'function') updateRequiredFieldStyles();
     });
   }
   function wireCheck(checkId, detailId) {
     document.getElementById(checkId).addEventListener('change', function() {
       document.getElementById(detailId).classList.toggle('visible', this.checked);
+      if (typeof updateRequiredFieldStyles === 'function') updateRequiredFieldStyles();
+    });
+    const detailEl = document.getElementById(detailId);
+    if (detailEl) detailEl.addEventListener('input', () => {
+      if (typeof updateRequiredFieldStyles === 'function') updateRequiredFieldStyles();
     });
   }
 
@@ -1373,6 +1388,15 @@
   wireRadio('navi', 'navi-detail');
   wireCheck('mot-nok', 'mot-detail');
   wireCheck('schr-nok', 'schr-detail');
+  // FW-Weidlig's "Nicht i.O." detail fields existed in the HTML but were never
+  // actually wired to reveal on selection - fixed here as part of making them
+  // required, since a required field the user can never see or fill would
+  // block the form forever.
+  wireRadio('w-allg', 'w-allg-detail');
+  wireRadio('w-schaeden-a', 'w-schaeden-a-detail');
+  wireRadio('w-schaeden-i', 'w-schaeden-i-detail');
+  wireRadio('w-mot', 'w-mot-detail');
+  wireRadio('w-schr', 'w-schr-detail');
 
   /* ---------------------------------------------------- TANKQUITTUNG (Beleg-Foto) ---------------------------------------------------- */
   // The "Tankquittung" <input type="file"> deliberately has accept="image/*" and NO
@@ -1707,6 +1731,28 @@
   const BIENE_STATUS_RADIOS = ['allg', 'schaeden-a', 'schaeden-i'];
   const WEIDLIG_STATUS_RADIOS = ['w-allg', 'w-schaeden-a', 'w-schaeden-i', 'w-mot', 'w-schr'];
 
+  // Every "Nicht i.O./Defekt" description field (see wireRadio()/wireCheck()
+  // above, which toggle each one's .visible class): once shown, the
+  // description becomes mandatory too, same red/green scheme as everywhere
+  // else. One shared list drives both the blocking alert() below and the live
+  // styling in updateRequiredFieldStyles(), instead of duplicating the field
+  // list in two places.
+  const NOK_DETAIL_FIELDS = [
+    { detailId: 'allg-detail', label: 'Beschreibung Allgemeiner Zustand (Biene III)' },
+    { detailId: 'schaeden-a-detail', label: 'Beschreibung Schäden aussen (Biene III)' },
+    { detailId: 'schaeden-i-detail', label: 'Beschreibung Schäden innen (Biene III)' },
+    { detailId: 'mot-detail', label: 'Beschreibung Motoren (Biene III)' },
+    { detailId: 'schr-detail', label: 'Beschreibung Schrauben (Biene III)' },
+    { detailId: 'w-allg-detail', label: 'Beschreibung Allgemeiner Zustand (FW-Weidlig)' },
+    { detailId: 'w-schaeden-a-detail', label: 'Beschreibung Schäden aussen (FW-Weidlig)' },
+    { detailId: 'w-schaeden-i-detail', label: 'Beschreibung Schäden innen (FW-Weidlig)' },
+    { detailId: 'w-mot-detail', label: 'Beschreibung Motoren (FW-Weidlig)' },
+    { detailId: 'w-schr-detail', label: 'Beschreibung Schrauben (FW-Weidlig)' },
+    { detailId: 'funk-detail', label: 'Beschreibung Funkgeräte' },
+    { detailId: 'mobil-detail', label: 'Beschreibung Mobile Geräte u.a. iPad' },
+    { detailId: 'navi-detail', label: 'Beschreibung Navigationsgeräte' },
+  ];
+
   function getMissingRequiredFields() {
     const missing = [];
     if (!document.getElementById('datum1').value.trim()) missing.push('Datum (Patrouille 1)');
@@ -1722,6 +1768,11 @@
       if (!val('w-mot-h-ausg')) missing.push('Motorenstunden ausgerückt (FW-Weidlig)');
       if (!val('w-mot-h-eing')) missing.push('Motorenstunden eingerückt (FW-Weidlig)');
     }
+
+    NOK_DETAIL_FIELDS.forEach(({ detailId, label }) => {
+      const el = document.getElementById(detailId);
+      if (el && el.classList.contains('visible') && !val(detailId)) missing.push(label);
+    });
 
     return missing;
   }
@@ -1783,6 +1834,15 @@
     const weidligStatusActive = WEIDLIG_STATUS_RADIOS.some(name => radioValue(name) !== null);
     setReqState(wMotHAusgEl, weidligStatusActive ? (val('w-mot-h-ausg') ? 'valid' : 'invalid') : 'neutral');
     setReqState(wMotHEingEl, weidligStatusActive ? (val('w-mot-h-eing') ? 'valid' : 'invalid') : 'neutral');
+
+    // "Nicht i.O." description fields: red/green only once wireRadio()/wireCheck()
+    // has made the field visible (i.e. "Nicht i.O." is actually selected);
+    // reverting to "i.O." hides the field again and it goes back to neutral.
+    NOK_DETAIL_FIELDS.forEach(({ detailId }) => {
+      const el = document.getElementById(detailId);
+      if (!el) return;
+      setReqState(el, el.classList.contains('visible') ? (val(detailId) ? 'valid' : 'invalid') : 'neutral');
+    });
   }
 
   // Wired directly (rather than only through flatpickr's own onChange option,
