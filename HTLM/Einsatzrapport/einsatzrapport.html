@@ -1129,13 +1129,15 @@
     updateCrewFieldStyles();
   }
 
-  // Green-on-fill confirmation for every Mannschaft field - purely a visual
-  // "this one's filled in" cue, never red (Einsatzrapport has no mandatory
-  // crew field at all - see getMissingRequiredFields() below), ported from
-  // Pikettrapport's identical feature so both report types behave the same
-  // way as crew members are added.
+  // Green-on-fill confirmation for every Mannschaft field beyond the one that's
+  // actually mandatory (crew_a - see getMissingRequiredFields() below, which
+  // handles its red/invalid state instead) - purely a visual "this one's
+  // filled in" cue, never red for the rest, ported from Pikettrapport's
+  // identical feature so both report types behave the same way as crew
+  // members are added.
   function updateCrewFieldStyles() {
     document.querySelectorAll('.crew-controls .crew-select, .crew-controls .crew-manual').forEach(el => {
+      if (el.id === 'crew_a') return; // handled by updateRequiredFieldStyles() instead
       setReqState(el, el.value.trim() ? 'valid' : 'neutral');
     });
   }
@@ -1982,19 +1984,23 @@
     if (el) el.addEventListener('input', updateGpsValidation);
   });
 
-  /* ---------------------------------------------------- REQUIRED FIELDS (Datum, Zeiten, Protokollführer/-in) ---------------------------------------------------- */
+  /* ---------------------------------------------------- REQUIRED FIELDS (Datum, Zeiten, Protokollführer/-in, Mannschaft) ---------------------------------------------------- */
   // Datum, Einsatzalarm/-beginn/-ende, and Protokollführer/-in (sig_crew) are
   // mandatory - same red/green live-styling idea as the GPS check above (and
   // ported from Pikettrapport's identical feature), plus the same
   // alert()-on-submit gate sig_crew already had below. Einsatzdauer is left out
   // on purpose - it's a read-only field derived from Einsatzbeginn/Einsatzende,
-  // not something the user fills in themselves.
+  // not something the user fills in themselves. At least one Mannschaft member
+  // is required too (mirrors Pikettrapport's Patrouille-1 crew requirement) -
+  // this was missing entirely before, so an Einsatzrapport with an empty crew
+  // list could be sent/downloaded without any warning.
   function getMissingRequiredFields() {
     const missing = [];
     if (!document.getElementById('datum').value.trim()) missing.push('Datum');
     if (!document.getElementById('einsatzalarm').value.trim()) missing.push('Einsatzalarm');
     if (!document.getElementById('einsatzbeginn').value.trim()) missing.push('Einsatzbeginn');
     if (!document.getElementById('einsatzende').value.trim()) missing.push('Einsatzende');
+    if (!crewList()) missing.push('mindestens 1 Mannschaftsmitglied');
     return missing;
   }
 
@@ -2010,6 +2016,23 @@
       const el = document.getElementById(id);
       setReqState(el, el && el.value.trim() ? 'valid' : 'invalid');
     });
+
+    // Mannschaft: crew_a is the one mandatory crew field (mirrors
+    // Pikettrapport's d1_crew_a) - red until at least one crew member is
+    // entered, either via crew_a itself or the manual entry (crew_e), in
+    // which case crew_a reverts to neutral gray rather than staying red.
+    const crewAEl = document.getElementById('crew_a');
+    const crewEEl = document.getElementById('crew_e');
+    const crewAFilled = !!(crewAEl && crewAEl.value.trim());
+    const crewEFilled = !!(crewEEl && crewEEl.value.trim());
+    if (crewAFilled) {
+      setReqState(crewAEl, 'valid');
+    } else if (crewEFilled) {
+      setReqState(crewAEl, 'neutral');
+    } else {
+      setReqState(crewAEl, 'invalid');
+    }
+    setReqState(crewEEl, crewEFilled ? 'valid' : 'neutral');
   }
 
   // Wired directly (rather than only through flatpickr's own onChange option,
@@ -2032,12 +2055,24 @@
   const sigCrewReqEl = document.getElementById('sig_crew');
   if (sigCrewReqEl) sigCrewReqEl.addEventListener('change', updateRequiredFieldStyles);
 
+  // crew_a is mandatory (see getMissingRequiredFields()/updateRequiredFieldStyles()
+  // above) - it's already part of crewDropdownEls() and wired through
+  // wireCrewVisibility() for the progressive-reveal chain, but that only calls
+  // updateCrewFieldStyles(), not updateRequiredFieldStyles(), so it needs this
+  // dedicated listener too to actually flip red/green as it's filled in.
+  const crewAReqEl = document.getElementById('crew_a');
+  if (crewAReqEl) crewAReqEl.addEventListener('change', updateRequiredFieldStyles);
+
   // Mannschaft's manual entry (crew_e) isn't part of the progressive-reveal
   // dropdown chain (no 'change' listener wired through wireCrewVisibility), so
   // it needs its own 'input' listener to pick up updateCrewFieldStyles()'s
-  // green-on-fill cue as the user types.
+  // green-on-fill cue as the user types, and updateRequiredFieldStyles() since
+  // filling it in also satisfies (and un-reds) the crew_a requirement above.
   const crewManualEl = document.getElementById('crew_e');
-  if (crewManualEl) crewManualEl.addEventListener('input', updateCrewFieldStyles);
+  if (crewManualEl) crewManualEl.addEventListener('input', () => {
+    updateCrewFieldStyles();
+    if (typeof updateRequiredFieldStyles === 'function') updateRequiredFieldStyles();
+  });
 
   // Fetches a small OpenStreetMap snapshot centered on the reported position
   // from map-snapshot.php (a server-side proxy - see that file for why the
