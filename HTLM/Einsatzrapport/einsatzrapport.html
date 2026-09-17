@@ -1122,6 +1122,18 @@
 
     updateCrewManualSpan();
     updateSigCrewOptions();
+    updateCrewFieldStyles();
+  }
+
+  // Green-on-fill confirmation for every Mannschaft field - purely a visual
+  // "this one's filled in" cue, never red (Einsatzrapport has no mandatory
+  // crew field at all - see getMissingRequiredFields() below), ported from
+  // Pikettrapport's identical feature so both report types behave the same
+  // way as crew members are added.
+  function updateCrewFieldStyles() {
+    document.querySelectorAll('.crew-controls .crew-select, .crew-controls .crew-manual').forEach(el => {
+      setReqState(el, el.value.trim() ? 'valid' : 'neutral');
+    });
   }
 
   // Every name currently selected in one of Mannschaft's dropdowns (crew_a-d plus
@@ -2015,6 +2027,13 @@
   });
   const sigCrewReqEl = document.getElementById('sig_crew');
   if (sigCrewReqEl) sigCrewReqEl.addEventListener('change', updateRequiredFieldStyles);
+
+  // Mannschaft's manual entry (crew_e) isn't part of the progressive-reveal
+  // dropdown chain (no 'change' listener wired through wireCrewVisibility), so
+  // it needs its own 'input' listener to pick up updateCrewFieldStyles()'s
+  // green-on-fill cue as the user types.
+  const crewManualEl = document.getElementById('crew_e');
+  if (crewManualEl) crewManualEl.addEventListener('input', updateCrewFieldStyles);
 
   // Fetches a small OpenStreetMap snapshot centered on the reported position
   // from map-snapshot.php (a server-side proxy - see that file for why the

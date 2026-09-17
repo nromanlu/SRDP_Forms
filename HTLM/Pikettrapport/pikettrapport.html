@@ -1144,6 +1144,23 @@
 
     updateCrewManualSpan(prefix);
     updateSigCrewOptions();
+    updateCrewFieldStyles(prefix);
+  }
+
+  // Green-on-fill confirmation for every crew field beyond the one field
+  // getMissingRequiredFields() actually enforces (d1_crew_a) - purely a visual
+  // "this one's filled in" cue, never red, so it covers every crew field on
+  // Patrouille 2/3 too (never mandatory) as well as _b/_c/_d/extra_N on
+  // Patrouille 1 itself, for a consistent look across the whole Mannschaft
+  // section instead of just the one required dropdown.
+  function updateCrewFieldStyles(prefix) {
+    const container = crewContainerFor(prefix);
+    if (!container) return;
+    const mandatoryId = prefix === 'd1_crew' ? prefix + '_a' : null;
+    container.querySelectorAll('.crew-select, .crew-manual').forEach(el => {
+      if (el.id === mandatoryId) return; // handled by updateRequiredFieldStyles() instead
+      setReqState(el, el.value.trim() ? 'valid' : 'neutral');
+    });
   }
 
   // .crew-controls' column count at the current viewport - kept in one place so it
@@ -1196,6 +1213,14 @@
   // breakpoint (column count changes from 3 to 2 or back) - e.g. an iPad rotating,
   // or a desktop browser window being resized.
   window.addEventListener('resize', () => CREW_PREFIXES.forEach(updateCrewManualSpan));
+  // Manual crew entries aren't part of the progressive-reveal dropdown chain
+  // (no 'change' listener wired through wireCrewVisibility), so they need their
+  // own 'input' listener to pick up updateCrewFieldStyles()'s green-on-fill cue
+  // as the user types.
+  CREW_PREFIXES.forEach(prefix => {
+    const manualEl = document.getElementById(prefix + '_e');
+    if (manualEl) manualEl.addEventListener('input', () => updateCrewFieldStyles(prefix));
+  });
 
   /* ---------------------------------------------------- TAG HINZUFÜGEN (bis zu 3 Tage) ---------------------------------------------------- */
   // Most Pikettrapporte only cover a single day, so Patrouille 2 and Patrouille 3 (see the
