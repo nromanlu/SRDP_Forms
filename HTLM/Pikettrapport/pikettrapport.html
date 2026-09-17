@@ -953,17 +953,26 @@
 
   // Datum keeps flatpickr's own calendar on every device - only Von/Bis switch
   // to native on mobile (that's what was asked for; the date picker is unrelated).
+  // disableMobile: true is required to actually make that true - without it,
+  // flatpickr has its OWN separate mobile detection that silently swaps to the
+  // native OS date picker on a touch device regardless of what this comment
+  // says, which also changes the value flatpickr syncs back into the field
+  // (native ISO format instead of dateFormat's "d.m.Y") and was why "Rapport
+  // bearbeiten" edit links opened on an iPad could restore Datum wrong/blank.
   flatpickr("#datum1", {
     dateFormat: "d.m.Y",
-    locale: "de"
+    locale: "de",
+    disableMobile: true
   });
   flatpickr("#datum2", {
     dateFormat: "d.m.Y",
-    locale: "de"
+    locale: "de",
+    disableMobile: true
   });
   flatpickr("#datum3", {
     dateFormat: "d.m.Y",
-    locale: "de"
+    locale: "de",
+    disableMobile: true
   });
 
   var TIME_FIELD_IDS = ["von1", "bis1", "von2", "bis2", "von3", "bis3"];
@@ -987,7 +996,12 @@
         noCalendar: true,
         dateFormat: "H:i",
         time_24hr: true,
-        locale: "de"
+        locale: "de",
+        // Belt-and-braces: this branch already only runs when the page's own
+        // isMobileDevice() said "not mobile", but flatpickr has its own,
+        // separate mobile detection - without this, a device the two checks
+        // disagree on could still get silently swapped to a native picker here.
+        disableMobile: true
       });
     });
   }
@@ -1562,8 +1576,19 @@
   function serializeForm() {
     const data = { fields: {}, checks: {}, radios: {} };
 
-    document.querySelectorAll('.page input[type="text"], .page input[type="number"], .page textarea, .page select')
-      .forEach(el => { if (el.id) data.fields[el.id] = el.value; });
+    // Was 'input[type="text"], input[type="number"]' only - missed von1-3/
+    // bis1-3 entirely on mobile, where the script above switches them to
+    // input[type="time"] (a real, confirmed edit-link bug: those values never
+    // even made it into the encoded link, let alone got restored from it).
+    // Listing every type by hand is exactly how that gap happened in the
+    // first place, so this now takes every input except the kinds that are
+    // deliberately NOT part of the plain-value model: checkbox/radio (own
+    // dedicated data.checks/data.radios below), file (Tankquittung uploads -
+    // can't round-trip through a data: URL here) and hidden (none currently,
+    // but not form data either way).
+    document.querySelectorAll(
+      '.page input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]), .page textarea, .page select'
+    ).forEach(el => { if (el.id) data.fields[el.id] = el.value; });
 
     document.querySelectorAll('.page input[type="checkbox"]')
       .forEach(el => { if (el.id) data.checks[el.id] = el.checked; });
