@@ -942,11 +942,45 @@
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/de.js"></script>
 <script>
+  // Detect phones/tablets so Einsatzalarm/-beginn/-ende can use the OS's own
+  // native time picker there instead of flatpickr's custom popup. A plain UA
+  // regex catches iPhone/Android/etc., but iPadOS Safari reports a desktop
+  // "Macintosh"/"MacIntel" UA by default (since iPadOS 13) - without the
+  // touch-point check below, iPad would be missed and fall through to
+  // flatpickr's desktop-style popup like a real Mac.
+  function isMobileDevice() {
+    var ua = navigator.userAgent || '';
+    var isIPadOnDesktopUA = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+    return /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua) || isIPadOnDesktopUA;
+  }
+  var IS_MOBILE_DEVICE = isMobileDevice();
+
+  // Datum fields keep flatpickr's own calendar on every device - only the time
+  // fields switch to native on mobile (that's what was asked for).
   flatpickr("#datum", { dateFormat: "d.m.Y", locale: "de" });
   flatpickr("#obmann-datum", { dateFormat: "d.m.Y", locale: "de" });
-  flatpickr("#einsatzbeginn", { enableTime: true, noCalendar: true, dateFormat: "H:i", time_24hr: true, locale: "de" });
-  flatpickr("#einsatzende", { enableTime: true, noCalendar: true, dateFormat: "H:i", time_24hr: true, locale: "de" });
-  flatpickr("#einsatzalarm", { enableTime: true, noCalendar: true, dateFormat: "H:i", time_24hr: true, locale: "de" });
+
+  var TIME_FIELD_IDS = ["einsatzalarm", "einsatzbeginn", "einsatzende"];
+  if (IS_MOBILE_DEVICE) {
+    // Switching these to a native <input type="time"> hands the control to the
+    // OS's own picker (the wheel/spinner UI) on phones and tablets. No flatpickr
+    // instance gets attached to these fields, so fillForm()'s
+    // `el._flatpickr && ...` guard elsewhere in this file naturally falls back
+    // to a plain .value assignment for them, which is all a native time input
+    // needs to restore correctly (e.g. via an edit link), and the Einsatzdauer
+    // calc below already listens for plain 'input'/'change' events rather than
+    // only flatpickr's onChange, so it keeps working unchanged.
+    TIME_FIELD_IDS.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.type = "time";
+      el.removeAttribute("placeholder");
+    });
+  } else {
+    TIME_FIELD_IDS.forEach(function (id) {
+      flatpickr("#" + id, { enableTime: true, noCalendar: true, dateFormat: "H:i", time_24hr: true, locale: "de" });
+    });
+  }
 </script>
 
 <script>

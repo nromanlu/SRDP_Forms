@@ -934,6 +934,21 @@
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/de.js"></script>
 <script>
+  // Detect phones/tablets so the Von/Bis time fields can use the OS's own native
+  // time picker there instead of flatpickr's custom popup. A plain UA regex
+  // catches iPhone/Android/etc., but iPadOS Safari reports a desktop
+  // "Macintosh"/"MacIntel" UA by default (since iPadOS 13) - without the
+  // touch-point check below, iPad would be missed and fall through to
+  // flatpickr's desktop-style popup like a real Mac.
+  function isMobileDevice() {
+    var ua = navigator.userAgent || '';
+    var isIPadOnDesktopUA = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+    return /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua) || isIPadOnDesktopUA;
+  }
+  var IS_MOBILE_DEVICE = isMobileDevice();
+
+  // Datum keeps flatpickr's own calendar on every device - only Von/Bis switch
+  // to native on mobile (that's what was asked for; the date picker is unrelated).
   flatpickr("#datum1", {
     dateFormat: "d.m.Y",
     locale: "de"
@@ -946,48 +961,32 @@
     dateFormat: "d.m.Y",
     locale: "de"
   });
-  flatpickr("#von1", {
-    enableTime: true,
-    noCalendar: true,
-    dateFormat: "H:i",
-    time_24hr: true,
-    locale: "de"
-  });
-  flatpickr("#bis1", {
-    enableTime: true,
-    noCalendar: true,
-    dateFormat: "H:i",
-    time_24hr: true,
-    locale: "de"
-  });
-  flatpickr("#von2", {
-    enableTime: true,
-    noCalendar: true,
-    dateFormat: "H:i",
-    time_24hr: true,
-    locale: "de"
-  });
-  flatpickr("#bis2", {
-    enableTime: true,
-    noCalendar: true,
-    dateFormat: "H:i",
-    time_24hr: true,
-    locale: "de"
-  });
-  flatpickr("#von3", {
-    enableTime: true,
-    noCalendar: true,
-    dateFormat: "H:i",
-    time_24hr: true,
-    locale: "de"
-  });
-  flatpickr("#bis3", {
-    enableTime: true,
-    noCalendar: true,
-    dateFormat: "H:i",
-    time_24hr: true,
-    locale: "de"
-  });
+
+  var TIME_FIELD_IDS = ["von1", "bis1", "von2", "bis2", "von3", "bis3"];
+  if (IS_MOBILE_DEVICE) {
+    // Switching these to a native <input type="time"> hands the control to the
+    // OS's own picker (the wheel/spinner UI) on phones and tablets. No flatpickr
+    // instance gets attached to these fields, so fillForm()'s
+    // `el._flatpickr && ...` guard elsewhere in this file naturally falls back
+    // to a plain .value assignment for them, which is all a native time input
+    // needs to restore correctly (e.g. via a "Rapport bearbeiten" edit link).
+    TIME_FIELD_IDS.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.type = "time";
+      el.removeAttribute("placeholder");
+    });
+  } else {
+    TIME_FIELD_IDS.forEach(function (id) {
+      flatpickr("#" + id, {
+        enableTime: true,
+        noCalendar: true,
+        dateFormat: "H:i",
+        time_24hr: true,
+        locale: "de"
+      });
+    });
+  }
 </script>
 
 <script>
