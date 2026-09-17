@@ -1769,6 +1769,46 @@
     return parts.length ? parts.join('  /  ') : '-';
   }
 
+  // Motorenstunden / Treibstoff formatting for the Boote and Maschinen PDF
+  // sections: a "0" (or empty) number field prints as a plain dash "-", same
+  // as every other unfilled field on the form, instead of a literal "0".
+  function numOf(id) {
+    return parseFloat(val(id)) || 0;
+  }
+
+  // Biene III Motorenstunden: "X h Bb / Y h Stb (eingerückt)", or "-" if both
+  // sides are 0/empty.
+  function motorenstundenBiene(bbId, stbId) {
+    if (numOf(bbId) === 0 && numOf(stbId) === 0) return '-';
+    return `${val(bbId) || '0'} h Bb   /   ${val(stbId) || '0'} h Stb (eingerückt)`;
+  }
+
+  // FW-Weidlig Motorenstunden: "Xh ausgerückt / Yh eingerückt", or "-" if
+  // both sides are 0/empty.
+  function motorenstundenWeidlig(ausgId, eingId) {
+    if (numOf(ausgId) === 0 && numOf(eingId) === 0) return '-';
+    return `${val(ausgId) || '0'}h ausgerückt / ${val(eingId) || '0'}h eingerückt`;
+  }
+
+  // Biene III Treibstoff: only the types actually bunkered are printed -
+  // just Diesel if only Diesel was fueled, just Bleifrei if only Bleifrei
+  // was fueled, both comma-separated if both were, and a plain "-" if
+  // neither was.
+  function treibstoffBiene(dieselId, bleifreiId) {
+    const parts = [];
+    if (numOf(dieselId) > 0) parts.push(`${val(dieselId)} Liter Diesel`);
+    if (numOf(bleifreiId) > 0) parts.push(`${val(bleifreiId)} Liter Bleifrei`);
+    if (!parts.length) return '-';
+    return `${parts.join(', ')} gebunkert`;
+  }
+
+  // FW-Weidlig Treibstoff (Bleifrei-only) and Maschinen Treibstoff (single
+  // value per machine): the amount if fueled, or "-" if 0/empty.
+  function treibstoffSingle(id, unitLabel) {
+    if (numOf(id) === 0) return '-';
+    return `${val(id)} ${unitLabel}`;
+  }
+
   async function loadImageAsDataURL(url) {
     try {
       const res = await fetch(url);
@@ -1989,8 +2029,8 @@
     fieldRowBoat('Schäden innen', okNokText('schaeden-i', 'schaeden-i-detail'), okNokText('w-schaeden-i', 'w-schaeden-i-detail'));
     fieldRowBoat('Motoren', engineText('mot-bb', 'mot-stb', 'mot-nok', 'mot-detail'), okNokText('w-mot', 'w-mot-detail'));
     fieldRowBoat('Schrauben', engineText('schr-bb', 'schr-stb', 'schr-nok', 'schr-detail'), okNokText('w-schr', 'w-schr-detail'));
-    fieldRowBoat('Motorenstunden', `${val('mot-h-bb') || '0'} h Bb   /   ${val('mot-h-stb') || '0'} h Stb (eingerückt)`, `${val('w-mot-h-ausg') || '0'}h ausgerückt / ${val('w-mot-h-eing') || '0'}h eingerückt`);
-    fieldRowBoat('Treibstoff', `${val('treibstoff') || '0'} Liter Diesel, ${val('treibstoff-bleifrei') || '0'} Liter Bleifrei gebunkert`, `${val('w-treibstoff-bleifrei') || '0'} Liter Bleifrei gebunkert`);
+    fieldRowBoat('Motorenstunden', motorenstundenBiene('mot-h-bb', 'mot-h-stb'), motorenstundenWeidlig('w-mot-h-ausg', 'w-mot-h-eing'));
+    fieldRowBoat('Treibstoff', treibstoffBiene('treibstoff', 'treibstoff-bleifrei'), treibstoffSingle('w-treibstoff-bleifrei', 'Liter Bleifrei gebunkert'));
     y += 0.5;
     hr(false);
 
@@ -2051,7 +2091,7 @@
 
     fieldRowMaschinen('Allgemeiner Zustand', isChecked('m1-ok') ? 'i.O.' : '-', isChecked('m2-ok') ? 'i.O.' : '-', isChecked('m3-ok') ? 'i.O.' : '-');
     fieldRowMaschinen('Betriebsdauer', `${val('m1-min') || '0'} min`, `${val('m2-min') || '0'} min`, `${val('m3-min') || '0'} min`);
-    fieldRowMaschinen('Treibstoff', `${val('m1-l') || '0'} L`, `${val('m2-l') || '0'} L`, `${val('m3-l') || '0'} L`);
+    fieldRowMaschinen('Treibstoff', treibstoffSingle('m1-l', 'L'), treibstoffSingle('m2-l', 'L'), treibstoffSingle('m3-l', 'L'));
     y += 0.5;
     hr(false);
 
