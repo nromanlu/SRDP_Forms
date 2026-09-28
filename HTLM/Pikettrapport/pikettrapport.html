@@ -642,9 +642,9 @@
     <div class="field-row">
       <div class="field-label">Motorenstunden</div>
       <div class="field-control">
-        <input type="number" id="mot-h-bb" min="0" step="0.1" placeholder="0">
+        <input type="number" id="mot-h-bb" min="0" step="0.1" placeholder="0" inputmode="decimal">
         <span class="inline-label">h Bb</span>
-        <input type="number" id="mot-h-stb" min="0" step="0.1" placeholder="0">
+        <input type="number" id="mot-h-stb" min="0" step="0.1" placeholder="0" inputmode="decimal">
         <span class="inline-label">h Stb (eingerückt)</span>
       </div>
     </div>
@@ -652,7 +652,7 @@
     <div class="field-row" style="border-bottom: none;">
       <div class="field-label">Treibstoff</div>
       <div class="field-control">
-        <input type="number" id="treibstoff" min="0" step="1" placeholder="0">
+        <input type="number" id="treibstoff" min="0" step="1" placeholder="0" inputmode="numeric">
         <span class="inline-label">Liter Diesel gebunkert</span>
         <label class="btn-receipt">
           Quittung hinzufügen
@@ -668,7 +668,7 @@
     <div class="field-row" style="border-bottom: none;">
       <div class="field-label"></div>
       <div class="field-control">
-        <input type="number" id="treibstoff-bleifrei" min="0" step="1" placeholder="0">
+        <input type="number" id="treibstoff-bleifrei" min="0" step="1" placeholder="0" inputmode="numeric">
         <span class="inline-label">Liter Bleifrei gebunkert</span>
       </div>
     </div>
@@ -749,7 +749,7 @@
     <div class="field-row" style="border-bottom: none;">
       <div class="field-label">Motorenstunden</div>
       <div class="field-control">
-        <input type="number" id="w-mot-h-ausg" min="0" step="0.1" placeholder="0">
+        <input type="number" id="w-mot-h-ausg" min="0" step="0.1" placeholder="0" inputmode="decimal">
         <span class="inline-label">h ausgerückt</span>
       </div>
     </div>
@@ -762,7 +762,7 @@
     <div class="field-row">
       <div class="field-label"></div>
       <div class="field-control">
-        <input type="number" id="w-mot-h-eing" min="0" step="0.1" placeholder="0">
+        <input type="number" id="w-mot-h-eing" min="0" step="0.1" placeholder="0" inputmode="decimal">
         <span class="inline-label">h eingerückt</span>
       </div>
     </div>
@@ -770,7 +770,7 @@
     <div class="field-row" style="border-bottom: none;">
       <div class="field-label">Treibstoff</div>
       <div class="field-control">
-        <input type="number" id="w-treibstoff-bleifrei" min="0" step="1" placeholder="0">
+        <input type="number" id="w-treibstoff-bleifrei" min="0" step="1" placeholder="0" inputmode="numeric">
         <span class="inline-label">Liter Bleifrei gebunkert</span>
         <label class="btn-receipt">
           Quittung hinzufügen
@@ -803,10 +803,10 @@
         <div class="check-center"><label><input type="checkbox" id="m1-ok"> Alles i.O.</label></div>
       </div>
       <div class="maschinen-field" data-label="Betriebsdauer" style="grid-column:2; grid-row:3;">
-        <input type="number" id="m1-min" min="0" placeholder="0"> min
+        <input type="number" id="m1-min" min="0" placeholder="0" inputmode="numeric"> min
       </div>
       <div class="maschinen-field" data-label="Treibstoff" style="grid-column:2; grid-row:4;">
-        <input type="number" id="m1-l" min="0" step=".1" placeholder="0"> Liter
+        <input type="number" id="m1-l" min="0" step=".1" placeholder="0" inputmode="decimal"> Liter
       </div>
     </div>
 
@@ -816,10 +816,10 @@
         <div class="check-center"><label><input type="checkbox" id="m2-ok"> Alles i.O.</label></div>
       </div>
       <div class="maschinen-field" data-label="Betriebsdauer" style="grid-column:3; grid-row:3;">
-        <input type="number" id="m2-min" min="0" placeholder="0"> min
+        <input type="number" id="m2-min" min="0" placeholder="0" inputmode="numeric"> min
       </div>
       <div class="maschinen-field" data-label="Treibstoff" style="grid-column:3; grid-row:4;">
-        <input type="number" id="m2-l" min="0" step=".1" placeholder="0"> Liter
+        <input type="number" id="m2-l" min="0" step=".1" placeholder="0" inputmode="decimal"> Liter
       </div>
     </div>
 
@@ -829,10 +829,10 @@
         <div class="check-center"><label><input type="checkbox" id="m3-ok"> Alles i.O.</label></div>
       </div>
       <div class="maschinen-field" data-label="Betriebsdauer" style="grid-column:4; grid-row:3;">
-        <input type="number" id="m3-min" min="0" placeholder="0"> min
+        <input type="number" id="m3-min" min="0" placeholder="0" inputmode="numeric"> min
       </div>
       <div class="maschinen-field" data-label="Treibstoff" style="grid-column:4; grid-row:4;">
-        <input type="number" id="m3-l" min="0" step=".1" placeholder="0"> Liter
+        <input type="number" id="m3-l" min="0" step=".1" placeholder="0" inputmode="decimal"> Liter
       </div>
     </div>
   </div>
