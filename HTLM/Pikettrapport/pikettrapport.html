@@ -2083,8 +2083,16 @@
       logoH = h;
     }
 
-    const titleBaselineY = y + logoH / 2 - 3.5;
-    const subtitleBaselineY = y + logoH / 2 + 3.5;
+    // Center the two-line title block on the logo's vertical span. Baselines
+    // alone aren't enough - cap-height (above baseline) and descent (below
+    // baseline) have to be accounted for, or the block visually skews toward
+    // the top (cap-height pulling glyphs up) or bottom of the box.
+    const titleCapH = 28 * 0.7 * 0.3527778;      // approx cap height (mm) of the 28pt bold title
+    const subtitleDescent = 13 * 0.2 * 0.3527778; // approx descender (mm) of the 13pt subtitle
+    const lineGap = 7;                            // baseline-to-baseline distance
+    const blockHeight = lineGap + titleCapH + subtitleDescent;
+    const titleBaselineY = y + (logoH - blockHeight) / 2 + titleCapH;
+    const subtitleBaselineY = titleBaselineY + lineGap;
 
     pdf.setFont('times', 'bold');
     pdf.setFontSize(28);
