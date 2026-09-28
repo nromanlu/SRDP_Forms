@@ -2073,22 +2073,27 @@
     ]);
 
     let titleX = marginX;
+    let logoH = 18;
     if (srdpLogo && srdpDims) {
       const box = 18;
       const ratio = Math.min(box / srdpDims.width, box / srdpDims.height);
       const w = srdpDims.width * ratio, h = srdpDims.height * ratio;
       pdf.addImage(srdpLogo, imageFormat(srdpLogo), marginX, y, w, h);
       titleX = marginX + box + 5;
+      logoH = h;
     }
+
+    const titleBaselineY = y + logoH / 2 - 3.5;
+    const subtitleBaselineY = y + logoH / 2 + 3.5;
 
     pdf.setFont('times', 'bold');
     pdf.setFontSize(28);
     pdf.setTextColor(...ink);
-    pdf.text('Pikettrapport', titleX, y + 10);
+    pdf.text('Pikettrapport', titleX, titleBaselineY);
     pdf.setFont('LiberationSans', 'normal');
     pdf.setFontSize(13);
     pdf.setTextColor(...gray);
-    pdf.text('Seerettungsdienst Pfäffikon SZ', titleX, y + 17);
+    pdf.text('Seerettungsdienst Pfäffikon SZ', titleX, subtitleBaselineY);
 
     if (gemeindeLogo && gemeindeDims) {
       const boxW = 60, boxH = 18;
